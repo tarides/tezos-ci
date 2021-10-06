@@ -4,6 +4,7 @@
  (name tezos_ci)
  (libraries
   current
+  current.fs
   current.cache
   current_git
   current_github
