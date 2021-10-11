@@ -1,13 +1,56 @@
-type active_protocol = {
-  name : string;
-  (* 011-PtHangzH *)
-  folder_name : string;
-  (* 011_PtHangzH *)
-  id : string;
-  (* 011 *)
-  slow_tests : string list;
-}
-[@@deriving yojson]
+let ( let* ) = Result.bind
+
+let ( let+ ) r f = Result.map f r
+
+module Active_protocol = struct
+  type t = {
+    name : string;
+    (* 011-PtHangzH *)
+    folder_name : string;
+    (* 011_PtHangzH *)
+    id : string;
+    (* 011 *)
+    slow_tests : string list;
+  }
+  [@@deriving yojson, ord]
+
+  let pp f v = Fmt.pf f "%s" v.name
+
+  let get version =
+    let folder_name = version in
+    let name = String.map (function '_' -> '-' | x -> x) folder_name in
+    let id = List.hd (String.split_on_char '-' name) in
+
+    let+ slow_tests =
+      Result.join
+      @@
+      let is_slow_test_marker line =
+        Astring.String.is_prefix ~affix:"@pytest.mark.slow" line
+      in
+      let tests_folder = Fpath.(v "tests_python" / ("tests_" ^ id)) in
+      Bos.OS.Dir.fold_contents ~elements:`Files
+        (fun path acc ->
+          let* acc = acc in
+          let filename = Fpath.basename path in
+          if
+            Astring.String.is_prefix ~affix:"test_" filename
+            && Astring.String.is_suffix ~affix:".py" filename
+          then
+            let testname =
+              let len = String.length filename in
+              String.sub filename 5 (len - 5 - 3)
+            in
+            let+ content = Bos.OS.File.read_lines path in
+            if List.exists is_slow_test_marker content then testname :: acc
+            else acc
+          else Ok acc)
+        (Ok []) tests_folder
+    in
+
+    { slow_tests; folder_name; name; id }
+end
+
+type active_protocol = Active_protocol.t [@@deriving yojson]
 
 type t = {
   all_protocols : string list;
@@ -21,10 +64,6 @@ type t = {
 let marshal t = Marshal.to_string t []
 
 let unmarshal t = Marshal.from_string t 0
-
-let ( let* ) = Result.bind
-
-let ( let+ ) r f = Result.map f r
 
 let find_opam folder =
   Bos.OS.Dir.fold_contents ~elements:`Files
@@ -50,39 +89,6 @@ let find_all_protocols () =
 let parse_protocol_file file =
   let+ lines = Bos.OS.File.read_lines file in
   List.map (String.map (function '-' -> '_' | x -> x)) lines
-
-let get_active_protocol version =
-  let folder_name = version in
-  let name = String.map (function '_' -> '-' | x -> x) folder_name in
-  let id = List.hd (String.split_on_char '-' name) in
-
-  let+ slow_tests =
-    Result.join
-    @@
-    let is_slow_test_marker line =
-      Astring.String.is_prefix ~affix:"@pytest.mark.slow" line
-    in
-    let tests_folder = Fpath.(v "tests_python" / ("tests_" ^ id)) in
-    Bos.OS.Dir.fold_contents ~elements:`Files
-      (fun path acc ->
-        let* acc = acc in
-        let filename = Fpath.basename path in
-        if
-          Astring.String.is_prefix ~affix:"test_" filename
-          && Astring.String.is_suffix ~affix:".py" filename
-        then
-          let testname =
-            let len = String.length filename in
-            String.sub filename 5 (len - 5 - 3)
-          in
-          let+ content = Bos.OS.File.read_lines path in
-          if List.exists is_slow_test_marker content then testname :: acc
-          else acc
-        else Ok acc)
-      (Ok []) tests_folder
-  in
-
-  { slow_tests; folder_name; name; id }
 
 let make repo_path =
   Bos.OS.Dir.with_current repo_path
@@ -113,7 +119,7 @@ let make repo_path =
         List.fold_left
           (fun rest v ->
             let* rest = rest in
-            let+ v = get_active_protocol v in
+            let+ v = Active_protocol.get v in
             v :: rest)
           (Ok []) active_protocol_versions
       in
