@@ -10,6 +10,8 @@
   current_github
   current_web
   current_docker
+  current_ocluster
+  capnp-rpc-unix
   astring
   dockerfile
   cmdliner

@@ -1,2 +1,4 @@
 
 (data_only_dirs "_opam" "var" "tmp")
+
+(vendored_dirs ocurrent ocluster)
