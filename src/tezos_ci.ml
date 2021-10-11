@@ -1,18 +1,14 @@
 module Git = Current_git
 module Docker = Current_docker.Default
+module Analyse = Analyse
+module Packaging = Packaging
 
 let () = Logging.init ()
 
 let monthly = Current_cache.Schedule.v ~valid_for:(Duration.of_day 30) ()
 
-let program_name = "tezos-ci"
-
-let pipeline =
+let obuilder_spec_build spec =
   let open Current.Syntax in
-  let repo_tezos =
-    Git.clone ~schedule:monthly "https://gitlab.com/tezos/tezos"
-  in
-  let spec = Current.return Build.v in
   let dockerfile =
     let _ = Bos.OS.Dir.create (Fpath.v "/tmp/tezos-ci") in
     let dockerfile =
@@ -27,7 +23,25 @@ let pipeline =
     let+ () = Current_fs.save path dockerfile and+ path = path in
     `File path
   in
-  Docker.build ~pull:true ~dockerfile (`Git repo_tezos)
+  Docker.build ~pull:true ~dockerfile
+
+let program_name = "tezos-ci"
+
+let pipeline =
+  let open Current.Syntax in
+  let repo_tezos =
+    Git.clone ~schedule:monthly "https://gitlab.com/tezos/tezos"
+  in
+  Current.all
+    [
+      Analyse.v repo_tezos |> Current.ignore_value;
+      obuilder_spec_build (Current.return Build.v) (`Git repo_tezos)
+      |> Current.ignore_value;
+      obuilder_spec_build
+        (Current.return Integration.integration_010_many_bakers)
+        (`Git repo_tezos)
+      |> Current.ignore_value;
+    ]
 
 let main current_config mode =
   let engine =

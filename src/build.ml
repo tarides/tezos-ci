@@ -39,5 +39,5 @@ let v =
         ])
   in
   Obuilder_spec.(
-    stage ~child_builds:[ ("build", build) ] ~from:"scratch"
-      [ copy ~from:(`Build "build") [ "/tezos/dist" ] ~dst:"/" ])
+    stage ~child_builds:[ ("tzbuild", build) ] ~from:"scratch"
+      [ copy ~from:(`Build "tzbuild") [ "/tezos/dist" ] ~dst:"/" ])
