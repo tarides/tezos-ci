@@ -31,7 +31,7 @@ module Spec = struct
   end
 
   module Ocluster = struct
-    let ocluster_build ~ocluster ~label spec src =
+    let obuilder _build ~ocluster ~label spec src =
       let open Current.Syntax in
       let spec =
         let+ spec = spec in
@@ -44,6 +44,27 @@ module Spec = struct
       in
       Current_ocluster.build_obuilder ocluster ~label ~src ~pool:"linux-x86_64"
         spec
+
+    let docker_build ~ocluster ~label spec src =
+      let open Current.Syntax in
+      let options =
+        {
+          Cluster_api.Docker.Spec.build_args = [];
+          squash = false;
+          buildkit = true;
+          include_git = true;
+        }
+      in
+      let spec =
+        let+ spec = spec in
+        Obuilder_spec.Docker.dockerfile_of_spec ~buildkit:true spec
+      in
+      let src =
+        let+ src = src in
+        [ Git.Commit.id src ]
+      in
+      Current_ocluster.build ocluster ~options ~label ~src ~pool:"linux-x86_64"
+        (`Contents spec)
   end
 end
 
@@ -61,16 +82,16 @@ let pipeline ocluster =
           |> Current.ignore_value
     | Some ocluster ->
         fun ~label spec ->
-          Spec.Ocluster.ocluster_build ~ocluster ~label spec repo_tezos
+          Spec.Ocluster.docker_build ~ocluster ~label spec repo_tezos
   in
 
   let analysis = Analyse.v repo_tezos in
   Current.all
     [
-      Integration.job ~build analysis
-      |> Current.collapse ~key:"stage" ~value:"integration" ~input:analysis;
-      Packaging.job ~build analysis
-      |> Current.collapse ~key:"stage" ~value:"integration" ~input:analysis;
+       Integration.job ~build analysis
+         |> Current.collapse ~key:"stage" ~value:"integration" ~input:analysis;
+         Packaging.job ~build analysis
+         |> Current.collapse ~key:"stage" ~value:"packaging" ~input:analysis;
       build ~label:"tezos build" (Current.return Build.v);
     ]
 

@@ -20,6 +20,7 @@ let v ~package () =
         run "./scripts/opam-pin.sh";
         run "opam depext --yes %s" package;
         env "DUNE_CACHE" "enabled";
+        env "DUNE_CACHE_TRANSPORT" "direct";
         run ~cache "opam install --yes %s" package;
         run ~cache "opam reinstall --yes --with-test %s" package;
       ])

@@ -1,4 +1,4 @@
-let build_deps_image_version = "575231db53bcfa44c5c55020a1aabaae745a1e59"
+let build_deps_image_version = "cc92c90ff41b9dfb7cbbce981d3b16b5dc77be68"
 
 let build_deps_image_name = "registry.gitlab.com/tezos/opam-repository"
 

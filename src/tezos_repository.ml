@@ -98,15 +98,14 @@ let make repo_path =
       let* opams_src = find_opam (Fpath.v "src") in
       let opams = opams_vendors @ opams_src in
       let bin_packages, lib_packages =
-        List.partition_map
+        List.partition
           (fun path ->
-            let dir, file = Fpath.split_base path in
-            let file = Fpath.to_string file in
-            if Fpath.to_string dir |> Astring.String.is_infix ~affix:"/bin_"
-            then Left file
-            else Right file)
+            let dir, _ = Fpath.split_base path in
+            Fpath.to_string dir |> Astring.String.is_infix ~affix:"/bin_")
           opams
       in
+      let bin_packages = List.map (fun path -> Fpath.split_base path |> snd |> Fpath.to_string) bin_packages in
+      let lib_packages = List.map (fun path -> Fpath.split_base path |> snd |> Fpath.to_string) lib_packages in
       (* remove-old-protocols.sh *)
       let* all_protocols = find_all_protocols () in
       let* active_testing_protocol_versions =

@@ -1,4 +1,4 @@
-let cache = [ Obuilder_spec.Cache.v ~target:"_build" "tezos-dune-build" ]
+let cache = [ Obuilder_spec.Cache.v ~target:"/home/tezos/.cache/dune" "tezos-dune-build" ]
 
 (**
   Build tezos binaries.
@@ -30,6 +30,8 @@ let v =
           (* TODO: sanity check for the version *)
           run "diff poetry.lock /home/tezos/poetry.lock";
           run "diff pyproject.toml /home/tezos/pyproject.toml";
+          env "DUNE_CACHE" "enabled";
+          env "DUNE_CACHE_TRANSPORT" "direct";
           run ~cache "opam exec -- dune build @runtest_dune_template";
           (* 2. Actually build and extract _build/default/src/lib_protocol_compiler/main_native.exe from the cached folder *)
           run ~cache
