@@ -7,9 +7,9 @@ let cache = [ Obuilder_spec.Cache.v ~target:"/home/tezos/.cache/dune" "tezos-dun
     - src/proto_*/parameters/*.json
     - _build/default/src/lib_protocol_compiler/main_native.exe
  *)
-let v =
+let v version =
   let from =
-    Variables.image_template__runtime_build_test_dependencies_template
+    Variables.docker_image_runtime_build_test_dependencies version
   in
   let build =
     Obuilder_spec.(

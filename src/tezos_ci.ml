@@ -71,6 +71,7 @@ end
 let program_name = "tezos-ci"
 
 let pipeline ocluster =
+  let open Current.Syntax in
   let repo_tezos =
     Git.clone ~schedule:monthly "https://gitlab.com/tezos/tezos"
   in
@@ -84,15 +85,19 @@ let pipeline ocluster =
         fun ~label spec ->
           Spec.Ocluster.docker_build ~ocluster ~label spec repo_tezos
   in
-
   let analysis = Analyse.v repo_tezos in
+  let build_spec =
+    let+ analysis = analysis in
+    Build.v analysis.version
+  in
+  let build_job = build ~label:"tezos build" build_spec in
+  let analysis = Current.gate ~on:build_job analysis in
   Current.all
     [
-       Integration.job ~build analysis
-         |> Current.collapse ~key:"stage" ~value:"integration" ~input:analysis;
-         Packaging.job ~build analysis
-         |> Current.collapse ~key:"stage" ~value:"packaging" ~input:analysis;
-      build ~label:"tezos build" (Current.return Build.v);
+      Integration.job ~build analysis
+      |> Current.collapse ~key:"stage" ~value:"integration" ~input:analysis;
+      Packaging.job ~build analysis
+      |> Current.collapse ~key:"stage" ~value:"packaging" ~input:analysis;
     ]
 
 let main current_config mode (`Ocluster_cap cap) =

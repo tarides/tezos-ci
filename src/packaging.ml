@@ -6,10 +6,8 @@ let cache =
       "packaging-dune-cache";
   ]
 
-let v ~package () =
-  let from =
-    Variables.image_template__runtime_build_test_dependencies_template
-  in
+let v ~package version =
+  let from = Variables.docker_image_runtime_build_test_dependencies version in
   Obuilder_spec.(
     stage ~from
       [
@@ -41,8 +39,8 @@ let job ~build (analysis : Tezos_repository.t Current.t) =
     end)
     (fun package ->
       let spec =
-        let+ package = package in
-        v ~package ()
+        let+ package = package and+ analysis = analysis in
+        v ~package analysis.version
       in
       let* package = package in
       build ~label:("packaging:" ^ package) spec)

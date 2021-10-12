@@ -50,14 +50,30 @@ module Active_protocol = struct
     { slow_tests; folder_name; name; id }
 end
 
-type active_protocol = Active_protocol.t [@@deriving yojson]
+module Version = struct
+  type t = { build_deps_image_version : string } [@@deriving yojson]
+
+  let parse () =
+    let version_path = Fpath.v "scripts/version.sh" in
+    let* version_file_content = Bos.OS.File.read_lines version_path in
+    version_file_content
+    |> List.find_map (fun line ->
+           match String.split_on_char '=' line with
+           | [ "opam_repository_tag"; build_deps_image_version ] ->
+               Some { build_deps_image_version }
+           | _ -> None)
+    |> Option.to_result
+         ~none:
+           (`Msg "Failed to find 'opam_repository_tag' in 'script/version.sh'")
+end
 
 type t = {
   all_protocols : string list;
-  active_protocols : active_protocol list;
+  active_protocols : Active_protocol.t list;
   active_testing_protocol_versions : string list;
   lib_packages : string list;
   bin_packages : string list;
+  version : Version.t;
 }
 [@@deriving yojson]
 
@@ -104,8 +120,16 @@ let make repo_path =
             Fpath.to_string dir |> Astring.String.is_infix ~affix:"/bin_")
           opams
       in
-      let bin_packages = List.map (fun path -> Fpath.split_base path |> snd |> Fpath.to_string) bin_packages in
-      let lib_packages = List.map (fun path -> Fpath.split_base path |> snd |> Fpath.to_string) lib_packages in
+      let bin_packages =
+        List.map
+          (fun path -> Fpath.split_base path |> snd |> Fpath.to_string)
+          bin_packages
+      in
+      let lib_packages =
+        List.map
+          (fun path -> Fpath.split_base path |> snd |> Fpath.to_string)
+          lib_packages
+      in
       (* remove-old-protocols.sh *)
       let* all_protocols = find_all_protocols () in
       let* active_testing_protocol_versions =
@@ -122,6 +146,7 @@ let make repo_path =
             v :: rest)
           (Ok []) active_protocol_versions
       in
+      let* version = Version.parse () in
       Ok
         {
           all_protocols;
@@ -129,6 +154,7 @@ let make repo_path =
           active_protocols;
           bin_packages;
           lib_packages;
+          version;
         })
     ()
   |> Result.join

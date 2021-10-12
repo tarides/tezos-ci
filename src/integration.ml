@@ -1,8 +1,6 @@
-let template ~script =
-  let build = Build.v in
-  let from =
-    Variables.image_template__runtime_build_test_dependencies_template
-  in
+let template ~script version =
+  let build = Build.v version in
+  let from = Variables.docker_image_runtime_build_test_dependencies version in
   Obuilder_spec.(
     stage ~from ~child_builds:[ ("build", build) ]
       [
@@ -45,7 +43,8 @@ let examples =
   in
   template ~script
 
-let job ~build (protocol : Tezos_repository.Active_protocol.t Current.t) =
+let job ~(analysis : Tezos_repository.t Current.t) ~build
+    (protocol : Tezos_repository.Active_protocol.t Current.t) =
   let open Current.Syntax in
   let slow_tests =
     let+ protocol = protocol in
@@ -63,16 +62,16 @@ let job ~build (protocol : Tezos_repository.Active_protocol.t Current.t) =
       end)
       (fun name ->
         let spec =
-          let+ name = name and+ protocol = protocol in
-          slow_test ~protocol_id:protocol.id name
+          let+ name = name and+ protocol = protocol and+ analysis = analysis in
+          slow_test ~protocol_id:protocol.id name analysis.version
         in
         let* protocol = protocol and* name = name in
         build ~label:("integration:test_" ^ protocol.id ^ "_" ^ name) spec)
       slow_tests
   in
   let batch_test =
-    let+ protocol = protocol in
-    fast_test ~protocol_id:protocol.id
+    let+ protocol = protocol and+ analysis = analysis in
+    fast_test ~protocol_id:protocol.id analysis.version
   in
   Current.all
     [
@@ -90,9 +89,13 @@ let job ~build (analysis : Tezos_repository.t Current.t) =
   let protocol_tests =
     Current.list_iter ~collapse_key:"active-protocols"
       (module Tezos_repository.Active_protocol)
-      (job ~build) active_protocols
+      (job ~analysis ~build) active_protocols
   in
   let examples =
-    build ~label:"integration:examples" (Current.return examples)
+    let examples =
+      let+ analysis = analysis in
+      examples analysis.version
+    in
+    build ~label:"integration:examples" examples
   in
   Current.all [ protocol_tests; examples ]
