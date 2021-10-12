@@ -77,9 +77,9 @@ type t = {
 }
 [@@deriving yojson]
 
-let marshal t = Marshal.to_string t []
+let marshal t = t |> to_yojson |> Yojson.Safe.to_string
 
-let unmarshal t = Marshal.from_string t 0
+let unmarshal t = t |> Yojson.Safe.from_string |> of_yojson |> Result.get_ok
 
 let find_opam folder =
   Bos.OS.Dir.fold_contents ~elements:`Files
