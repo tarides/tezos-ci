@@ -7,6 +7,57 @@ let () = Logging.init ()
 
 let monthly = Current_cache.Schedule.v ~valid_for:(Duration.of_day 30) ()
 
+module Commit_sequence = struct
+  module Key = struct
+    type t = Current_git.Commit.t list
+
+    let digest v =
+      List.map Current_git.Commit.hash v
+      |> String.concat ";" |> Digest.string |> Digest.to_hex
+  end
+
+  type state = {
+    mutable digest : string;
+    mutable index : int;
+    mutable max : int;
+  }
+
+  let make digest = { digest; index = 0; max = 0 }
+
+  let update_to state digest max =
+    state.digest <- digest;
+    state.max <- max;
+    state.index <- 0
+
+  let next state values =
+    let digest = Key.digest values in
+    if digest <> state.digest then update_to state digest (List.length values);
+    let return_value = List.nth values state.index in
+    if state.index + 1 < state.max then state.index <- state.index + 1
+    else state.index <- 0;
+    return_value
+
+  module Op = struct
+    let id = "commit-sequence"
+
+    type t = state
+
+    module Key = Key
+    module Value = Current_git.Commit
+
+    let auto_cancel = false
+
+    let pp f _ = Fmt.string f "commit sequence"
+
+    let build state job commits =
+      let open Lwt.Syntax in
+      let* () = Current.Job.start ~level:Harmless job in
+      Lwt.return_ok (next state commits)
+  end
+
+  module Seq = Current_cache.Make (Op)
+end
+
 module Spec = struct
   module Docker = struct
     let pool = Current.Pool.create ~label:"docker build" 1
