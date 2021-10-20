@@ -8,7 +8,11 @@ let template ~script version =
         workdir "/home/tezos";
         copy [ "tests_python" ] ~dst:"./tests_python";
         copy [ "poetry.lock"; "pyproject.toml" ] ~dst:".";
-        copy [ "scripts/version.sh" ] ~dst:"scripts/version.sh";
+        copy [ "src" ] ~dst:"./src";
+        copy [ "vendors" ] ~dst:"./vendors";
+        copy
+          [ "scripts/version.sh"; "scripts/print_version.ml" ]
+          ~dst:"scripts/";
         copy ~from:(`Build "build") [ "/" ] ~dst:".";
         run "find . -maxdepth 3";
         run ". ./scripts/version.sh";
@@ -16,13 +20,13 @@ let template ~script version =
         run "mkdir tests_python/tmp";
         run "touch tests_python/tmp/empty__to_avoid_glob_failing";
         workdir "tests_python";
-        run "%s" script;
+        run "%s; exit_code=$?; tail -n 100 tmp/*; exit $exit_code" script;
       ])
 
 let slow_test ~protocol_id test_name =
   let script =
     Fmt.str
-      {| poetry run pytest "tests_%s/test_%s.py" --exitfirst -m "slow" -s --log-dir=tmp "--junitxml=reports/%s_%s.xml" 2>&1 | tee "tmp/%s_%s.out" | tail |}
+      {|opam exec -- poetry run pytest "tests_%s/test_%s.py" --exitfirst -m "slow" -s --log-dir=tmp "--junitxml=reports/%s_%s.xml" 2>&1 | tee "tmp/%s_%s.out" | tail |}
       protocol_id test_name protocol_id test_name protocol_id test_name
   in
   template ~script
@@ -30,7 +34,7 @@ let slow_test ~protocol_id test_name =
 let fast_test ~protocol_id =
   let script =
     Fmt.str
-      {| poetry run pytest "tests_%s/" --exitfirst -m "not slow" -s --log-dir=tmp "--junitxml=reports/%s_batch.xml" 2>&1 | tee "tmp/%s_batch.out" | tail |}
+      {|opam exec -- poetry run pytest "tests_%s/" --exitfirst -m "not slow" -s --log-dir=tmp "--junitxml=reports/%s_batch.xml" 2>&1 | tee "tmp/%s_batch.out" | tail |}
       protocol_id protocol_id protocol_id
   in
   template ~script

@@ -1,4 +1,5 @@
-let cache = [ Obuilder_spec.Cache.v ~target:"/home/tezos/.cache/dune" "tezos-dune-build" ]
+let cache =
+  [ Obuilder_spec.Cache.v ~target:"/home/tezos/.cache/dune" "tezos-dune-build" ]
 
 (**
   Build tezos binaries.
@@ -8,9 +9,7 @@ let cache = [ Obuilder_spec.Cache.v ~target:"/home/tezos/.cache/dune" "tezos-dun
     - _build/default/src/lib_protocol_compiler/main_native.exe
  *)
 let v version =
-  let from =
-    Variables.docker_image_runtime_build_test_dependencies version
-  in
+  let from = Variables.docker_image_runtime_build_test_dependencies version in
   let build =
     Obuilder_spec.(
       stage ~from
@@ -24,7 +23,22 @@ let v version =
              Give access to the Python dependencies/executables *)
           run ". $HOME/.venv/bin/activate";
           (* TODO: analysis step to figure out active protocols and step caching *)
-          copy [ "." ] ~dst:".";
+          copy
+            [
+              "active_testing_protocol_versions";
+              "active_protocol_versions";
+              "poetry.lock";
+              "pyproject.toml";
+              "Makefile";
+              "dune";
+              "dune-project";
+            ]
+            ~dst:"./";
+          copy [ "src" ] ~dst:"src/";
+          copy [ "vendors" ] ~dst:"vendors/";
+          copy
+            [ "scripts/remove-old-protocols.sh" ]
+            ~dst:"scripts/remove-old-protocols.sh";
           run "./scripts/remove-old-protocols.sh";
           (* 1. Some basic, fast sanity checks *)
           (* TODO: sanity check for the version *)

@@ -22,17 +22,19 @@ module Commit_sequence = struct
     mutable max : int;
   }
 
-  let make digest = { digest; index = 0; max = 0 }
+  let empty digest = { digest; index = 0; max = 0 }
 
   let update_to state digest max =
     state.digest <- digest;
     state.max <- max;
     state.index <- 0
 
-  let next state values =
+  let next ~job state values =
     let digest = Key.digest values in
     if digest <> state.digest then update_to state digest (List.length values);
     let return_value = List.nth values state.index in
+    Current.Job.log job "Commit #%d/%d: %a" (state.index + 1) state.max
+      Git.Commit.pp return_value;
     if state.index + 1 < state.max then state.index <- state.index + 1
     else state.index <- 0;
     return_value
@@ -52,10 +54,17 @@ module Commit_sequence = struct
     let build state job commits =
       let open Lwt.Syntax in
       let* () = Current.Job.start ~level:Harmless job in
-      Lwt.return_ok (next state commits)
+      Lwt.return_ok (next ~job state commits)
   end
 
   module Seq = Current_cache.Make (Op)
+
+  let v commits =
+    let state = empty "" in
+    let open Current.Syntax in
+    Current.component "Cycle commits"
+    |> let> commits = commits in
+       Seq.get state commits
 end
 
 module Spec = struct
@@ -93,7 +102,7 @@ module Spec = struct
         let+ src = src in
         [ Git.Commit.id src ]
       in
-      Current_ocluster.build_obuilder ocluster ~label ~src ~pool:"linux-x86_64"
+      Current_ocluster.build_obuilder ocluster ~label ~src ~pool:"linux-arm64"
         spec
 
     let docker_build ~ocluster ~label spec src =
@@ -114,26 +123,52 @@ module Spec = struct
         let+ src = src in
         [ Git.Commit.id src ]
       in
-      Current_ocluster.build ocluster ~options ~label ~src ~pool:"linux-x86_64"
+      Current_ocluster.build ocluster ~options ~label ~src ~pool:"linux-arm64"
         (`Contents spec)
   end
 end
 
 let program_name = "tezos-ci"
 
+let commit gref =
+  Git.clone ~schedule:monthly ~gref "https://gitlab.com/tezos/tezos"
+
+(* https://gitlab.com/tezos/tezos/-/merge_requests/2970/commits *)
+let commits =
+  [
+    commit "master";
+    commit "c535334c0fdfb58c3ebbc21c25ef3cd5acfda684";
+    (* opam: Use opam repo with zarith 1.12 *)
+    commit "900f65fdd7d672e48cd3d10546bccd66cae6f5a8";
+    (* opam: set correct zarith version in all opam files *)
+    commit "c1a2e02cf85426f9bcb23928df07841e59c44619";
+    (* environment: Update to ZArith 1.12 *)
+    commit "638f524f5e8a0bd43271202e98d62683e0120057";
+    (* Stdlib.Compare.Z: use Z.Compare rather than Make(Z) *)
+  ]
+  |> Current.list_seq
+
+let do_build = function
+  | "alpha_batch" | "011_batch" | "010_batch" -> true
+  | _ -> false
+
+let maybe_build ~label v =
+  if do_build label then v ()
+  else Current.return ~label:("Build skipped: " ^ label) ()
+
 let pipeline ocluster =
   let open Current.Syntax in
-  let repo_tezos =
-    Git.clone ~schedule:monthly "https://gitlab.com/tezos/tezos"
-  in
+  let repo_tezos = Commit_sequence.v commits in
   let build =
     match ocluster with
     | None ->
         fun ~label spec ->
+          maybe_build ~label @@ fun () ->
           Spec.Docker.obuilder_spec_build ~label spec (`Git repo_tezos)
           |> Current.ignore_value
     | Some ocluster ->
         fun ~label spec ->
+          maybe_build ~label @@ fun () ->
           Spec.Ocluster.docker_build ~ocluster ~label spec repo_tezos
   in
   let analysis = Analyse.v repo_tezos in

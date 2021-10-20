@@ -59,12 +59,13 @@ module Version = struct
     version_file_content
     |> List.find_map (fun line ->
            match String.split_on_char '=' line with
+           | [ "export opam_repository_tag"; build_deps_image_version ]
            | [ "opam_repository_tag"; build_deps_image_version ] ->
                Some { build_deps_image_version }
            | _ -> None)
     |> Option.to_result
          ~none:
-           (`Msg "Failed to find 'opam_repository_tag' in 'script/version.sh'")
+           (`Msg "Failed to find 'opam_repository_tag' in 'scripts/version.sh'")
 end
 
 type t = {
