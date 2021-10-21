@@ -142,32 +142,29 @@ let commits =
   ]
   |> Current.list_seq
 
-let do_build = function
-  | "tezos build" | "011_batch" -> true
-  | "integration:tezt:1" -> true
-  | "integration:test_coverage:test-unit" -> true
-  | _ -> false
+let do_build ~filter label =
+  match filter with None -> true | Some filter -> List.mem label filter
 
-let maybe_build ~label v =
-  if do_build label then v ()
+let maybe_build ~filter ~label v =
+  if do_build ~filter label then v ()
   else
     let open Current.Syntax in
     let* () = Current.return ~label:("Build skipped: " ^ label) () in
     Current.active `Ready
 
-let pipeline ocluster =
+let pipeline ocluster filter =
   let open Current.Syntax in
   let repo_tezos = Commit_sequence.v commits in
   let build =
     match ocluster with
     | None ->
         fun ~label spec ->
-          maybe_build ~label @@ fun () ->
+          maybe_build ~filter ~label @@ fun () ->
           Spec.Docker.obuilder_spec_build ~label spec (`Git repo_tezos)
           |> Current.ignore_value
     | Some ocluster ->
         fun ~label spec ->
-          maybe_build ~label @@ fun () ->
+          maybe_build ~filter ~label @@ fun () ->
           Spec.Ocluster.docker_build ~ocluster ~label spec repo_tezos
   in
   let analysis = Analyse.v repo_tezos in
@@ -175,7 +172,7 @@ let pipeline ocluster =
     let+ analysis = analysis in
     Build.v analysis.version
   in
-  let build_job = build ~label:"tezos build" build_spec in
+  let build_job = build ~label:"build" build_spec in
   let analysis = Current.gate ~on:build_job analysis in
   Current.all_labelled
     [
@@ -193,7 +190,7 @@ let pipeline ocluster =
         |> Current.collapse ~key:"stage" ~value:"coverage" ~input:analysis );
     ]
 
-let main current_config mode (`Ocluster_cap cap) =
+let main current_config mode (`Ocluster_cap cap) (`Filter filter) =
   let ocluster =
     Option.map
       (fun cap ->
@@ -206,7 +203,8 @@ let main current_config mode (`Ocluster_cap cap) =
       cap
   in
   let engine =
-    Current.Engine.create ~config:current_config (fun () -> pipeline ocluster)
+    Current.Engine.create ~config:current_config (fun () ->
+        pipeline ocluster filter)
   in
   let site =
     let routes = Current_web.routes engine in
@@ -234,10 +232,20 @@ let ocluster_cap =
        [ "ocluster-cap" ]
   |> named (fun x -> `Ocluster_cap x)
 
+let filter =
+  Arg.value
+  @@ Arg.opt ~vopt:(Some []) Arg.(some (list string)) None
+  @@ Arg.info ~doc:"Only build a subset of the jobs." [ "f"; "filter" ]
+  |> named (fun x -> `Filter x)
+
 let cmd =
   let doc = "an OCurrent pipeline" in
   ( Term.(
-      const main $ Current.Config.cmdliner $ Current_web.cmdliner $ ocluster_cap),
+      const main
+      $ Current.Config.cmdliner
+      $ Current_web.cmdliner
+      $ ocluster_cap
+      $ filter),
     Term.info program_name ~doc )
 
 let () = Term.(exit @@ eval cmd)
