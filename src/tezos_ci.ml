@@ -137,12 +137,6 @@ let commit gref =
 let commits =
   [
     commit "master";
-    commit "c535334c0fdfb58c3ebbc21c25ef3cd5acfda684";
-    (* opam: Use opam repo with zarith 1.12 *)
-    commit "900f65fdd7d672e48cd3d10546bccd66cae6f5a8";
-    (* opam: set correct zarith version in all opam files *)
-    commit "c1a2e02cf85426f9bcb23928df07841e59c44619";
-    (* environment: Update to ZArith 1.12 *)
     commit "638f524f5e8a0bd43271202e98d62683e0120057";
     (* Stdlib.Compare.Z: use Z.Compare rather than Make(Z) *)
   ]
