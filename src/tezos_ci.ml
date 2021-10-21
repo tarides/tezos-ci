@@ -149,7 +149,10 @@ let commits =
   |> Current.list_seq
 
 let do_build = function
-  | "alpha_batch" | "011_batch" | "010_batch" -> true
+  | "tezos build" -> true
+  | "integration:test_011_contract_annotations"
+  | "packaging:tezos-client-genesis" | "integration:test_011_baker_endorser" ->
+      true
   | _ -> false
 
 let maybe_build ~label v =
