@@ -9,7 +9,8 @@ let reporter =
     Fmt.kpf k Fmt.stdout
       ("%a %a @[" ^^ fmt ^^ "@]@.")
       Fmt.(styled `Magenta string)
-      (Printf.sprintf "%14s" src) Logs_fmt.pp_header (level, header)
+      (Printf.sprintf "%14s" src)
+      Logs_fmt.pp_header (level, header)
   in
   { Logs.report }
 
@@ -24,4 +25,3 @@ let run x =
   | Error (`Msg m) as e ->
       Logs.err (fun f -> f "%a" Fmt.lines m);
       e
-    
