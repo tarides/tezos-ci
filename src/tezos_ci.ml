@@ -154,7 +154,10 @@ let do_build = function
 
 let maybe_build ~label v =
   if do_build label then v ()
-  else Current.return ~label:("Build skipped: " ^ label) ()
+  else
+    let open Current.Syntax in
+    let* () = Current.return ~label:("Build skipped: " ^ label) () in
+    Current.active `Ready
 
 let pipeline ocluster =
   let open Current.Syntax in
