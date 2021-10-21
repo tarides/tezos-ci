@@ -17,6 +17,7 @@ let v version =
           user ~uid:100 ~gid:100;
           env "HOME" "/home/tezos";
           workdir "/tezos/";
+          run "sudo chown 100:100 /tezos/";
           copy [ "scripts/version.sh" ] ~dst:"./scripts/version.sh";
           run ". ./scripts/version.sh";
           (* Load the environment poetry previously created in the docker image.
@@ -55,5 +56,5 @@ let v version =
         ])
   in
   Obuilder_spec.(
-    stage ~child_builds:[ ("tzbuild", build) ] ~from:"scratch"
-      [ copy ~from:(`Build "tzbuild") [ "/tezos/dist" ] ~dst:"/" ])
+    stage ~child_builds:[ ("tzbuild", build) ] ~from:"alpine"
+      [ copy ~from:(`Build "tzbuild") [ "/tezos/dist" ] ~dst:"/dist" ])

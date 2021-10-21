@@ -91,7 +91,7 @@ module Spec = struct
   end
 
   module Ocluster = struct
-    let obuilder _build ~ocluster ~label spec src =
+    let obuilder_build ~ocluster ~label spec src =
       let open Current.Syntax in
       let spec =
         let+ spec = spec in
