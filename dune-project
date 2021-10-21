@@ -24,13 +24,16 @@
    (>= 0.3))
   current_web
   current_git
-  opam-0install
+  current_github
+  current_docker
+  current_ocluster
   capnp-rpc-unix
+  obuilder-spec
+  opam-file-format
+  astring
   fmt
   lwt
+  logs
   cmdliner
-  git-unix
   dockerfile
-  graphql-cohttp
-  graphql-lwt
   conf-libev))
