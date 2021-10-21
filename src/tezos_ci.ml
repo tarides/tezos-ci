@@ -183,16 +183,20 @@ let pipeline ocluster =
   in
   let build_job = build ~label:"tezos build" build_spec in
   let analysis = Current.gate ~on:build_job analysis in
-  Current.all
+  Current.all_labelled
     [
-      Integration.job ~build analysis
-      |> Current.collapse ~key:"stage" ~value:"integration" ~input:analysis;
-      Packaging.job ~build analysis
-      |> Current.collapse ~key:"stage" ~value:"packaging" ~input:analysis;
-      Tezt.job ~build analysis
-      |> Current.collapse ~key:"stage" ~value:"tezt" ~input:analysis;
-      Coverage.job ~build analysis
-      |> Current.collapse ~key:"stage" ~value:"coverage" ~input:analysis;
+      ( "integration",
+        Integration.job ~build analysis
+        |> Current.collapse ~key:"stage" ~value:"integration" ~input:analysis );
+      ( "packaging",
+        Packaging.job ~build analysis
+        |> Current.collapse ~key:"stage" ~value:"packaging" ~input:analysis );
+      ( "tezt",
+        Tezt.job ~build analysis
+        |> Current.collapse ~key:"stage" ~value:"tezt" ~input:analysis );
+      ( "coverage",
+        Coverage.job ~build analysis
+        |> Current.collapse ~key:"stage" ~value:"coverage" ~input:analysis );
     ]
 
 let main current_config mode (`Ocluster_cap cap) =
