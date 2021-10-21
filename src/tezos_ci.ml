@@ -4,7 +4,6 @@ module Analyse = Analyse
 module Packaging = Packaging
 
 let () = Logging.init ()
-
 let monthly = Current_cache.Schedule.v ~valid_for:(Duration.of_day 30) ()
 
 module Commit_sequence = struct
@@ -13,7 +12,9 @@ module Commit_sequence = struct
 
     let digest v =
       List.map Current_git.Commit.hash v
-      |> String.concat ";" |> Digest.string |> Digest.to_hex
+      |> String.concat ";"
+      |> Digest.string
+      |> Digest.to_hex
   end
 
   type state = {
@@ -48,7 +49,6 @@ module Commit_sequence = struct
     module Value = Current_git.Commit
 
     let auto_cancel = false
-
     let pp f _ = Fmt.string f "commit sequence"
 
     let build state job commits =
@@ -149,10 +149,9 @@ let commits =
   |> Current.list_seq
 
 let do_build = function
-  | "tezos build" -> true
-  | "integration:test_011_contract_annotations"
-  | "packaging:tezos-client-genesis" | "integration:test_011_baker_endorser" ->
-      true
+  | "tezos build" | "011_batch" -> true
+  | "integration:tezt:1" -> true
+  | "integration:test_coverage:test-unit" -> true
   | _ -> false
 
 let maybe_build ~label v =
@@ -190,6 +189,10 @@ let pipeline ocluster =
       |> Current.collapse ~key:"stage" ~value:"integration" ~input:analysis;
       Packaging.job ~build analysis
       |> Current.collapse ~key:"stage" ~value:"packaging" ~input:analysis;
+      Tezt.job ~build analysis
+      |> Current.collapse ~key:"stage" ~value:"tezt" ~input:analysis;
+      Coverage.job ~build analysis
+      |> Current.collapse ~key:"stage" ~value:"coverage" ~input:analysis;
     ]
 
 let main current_config mode (`Ocluster_cap cap) =

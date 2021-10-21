@@ -6,13 +6,7 @@ let template ~script version =
       [
         user ~uid:100 ~gid:100;
         workdir "/home/tezos";
-        copy [ "tests_python" ] ~dst:"./tests_python";
-        copy [ "poetry.lock"; "pyproject.toml" ] ~dst:".";
-        copy [ "src" ] ~dst:"./src";
-        copy [ "vendors" ] ~dst:"./vendors";
-        copy
-          [ "scripts/version.sh"; "scripts/print_version.ml" ]
-          ~dst:"scripts/";
+        copy [ "/" ] ~dst:"./";
         copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
         run "find . -maxdepth 3";
         run ". ./scripts/version.sh";
