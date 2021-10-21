@@ -13,7 +13,7 @@ let template ~script version =
         copy
           [ "scripts/version.sh"; "scripts/print_version.ml" ]
           ~dst:"scripts/";
-        copy ~from:(`Build "build") [ "/" ] ~dst:".";
+        copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
         run "find . -maxdepth 3";
         run ". ./scripts/version.sh";
         run ". /home/tezos/.venv/bin/activate";
