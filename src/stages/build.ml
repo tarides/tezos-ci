@@ -1,13 +1,13 @@
+open Analysis
+
 let cache =
   [ Obuilder_spec.Cache.v ~target:"/home/tezos/.cache/dune" "tezos-dune-build" ]
 
-(**
-  Build tezos binaries.
-  paths:
+(** Build tezos binaries. paths:
+
     - tezos-*
     - src/proto_*/parameters/*.json
-    - _build/default/src/lib_protocol_compiler/main_native.exe
- *)
+    - _build/default/src/lib_protocol_compiler/main_native.exe *)
 let v version =
   let from = Variables.docker_image_runtime_build_test_dependencies version in
   let build =
@@ -58,3 +58,19 @@ let v version =
   Obuilder_spec.(
     stage ~child_builds:[ ("tzbuild", build) ] ~from:"alpine"
       [ copy ~from:(`Build "tzbuild") [ "/tezos/dist" ] ~dst:"/dist" ])
+
+let arm64 ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
+  let open Current.Syntax in
+  let spec =
+    let+ analysis = analysis in
+    v analysis.version
+  in
+  Lib.Builder.build ~pool:Arm64 ~label:"build:arm64" builder spec
+
+let x86_64 ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
+  let open Current.Syntax in
+  let spec =
+    let+ analysis = analysis in
+    v analysis.version
+  in
+  Lib.Builder.build ~pool:X86_64 ~label:"build:x86_64" builder spec

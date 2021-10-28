@@ -1,7 +1,6 @@
 module Git = Current_git
 module Docker = Current_docker.Default
-module Analyse = Analyse
-module Packaging = Packaging
+open Stages
 
 let () = Logging.init ()
 let monthly = Current_cache.Schedule.v ~valid_for:(Duration.of_day 30) ()
@@ -59,73 +58,12 @@ module Commit_sequence = struct
 
   module Seq = Current_cache.Make (Op)
 
-  let v commits =
+  let _v commits =
     let state = empty "" in
     let open Current.Syntax in
     Current.component "Cycle commits"
     |> let> commits = commits in
        Seq.get state commits
-end
-
-module Spec = struct
-  module Docker = struct
-    let pool = Current.Pool.create ~label:"docker build" 1
-
-    let obuilder_spec_build ~label spec =
-      let open Current.Syntax in
-      let dockerfile =
-        let _ = Bos.OS.Dir.create (Fpath.v "/tmp/tezos-ci") in
-        let dockerfile =
-          let+ spec = spec in
-          Obuilder_spec.Docker.dockerfile_of_spec ~buildkit:true spec
-        in
-        let path =
-          let+ dockerfile = dockerfile in
-          let hash = Digest.string dockerfile |> Digest.to_hex in
-          Fpath.v (Fmt.str "/tmp/tezos-ci/Dockerfile.%s.tez" hash)
-        in
-        let+ () = Current_fs.save path dockerfile and+ path = path in
-        `File path
-      in
-      Docker.build ~label ~pool ~pull:true ~dockerfile
-  end
-
-  module Ocluster = struct
-    let obuilder_build ~ocluster ~label spec src =
-      let open Current.Syntax in
-      let spec =
-        let+ spec = spec in
-        let spec_str = Fmt.to_to_string Obuilder_spec.pp spec in
-        { Cluster_api.Obuilder_job.Spec.spec = `Contents spec_str }
-      in
-      let src =
-        let+ src = src in
-        [ Git.Commit.id src ]
-      in
-      Current_ocluster.build_obuilder ocluster ~label ~src ~pool:"linux-arm64"
-        spec
-
-    let docker_build ~ocluster ~label spec src =
-      let open Current.Syntax in
-      let options =
-        {
-          Cluster_api.Docker.Spec.build_args = [];
-          squash = false;
-          buildkit = true;
-          include_git = true;
-        }
-      in
-      let spec =
-        let+ spec = spec in
-        Obuilder_spec.Docker.dockerfile_of_spec ~buildkit:true spec
-      in
-      let src =
-        let+ src = src in
-        [ Git.Commit.id src ]
-      in
-      Current_ocluster.build ocluster ~options ~label ~src ~pool:"linux-arm64"
-        (`Contents spec)
-  end
 end
 
 let program_name = "tezos-ci"
@@ -134,7 +72,7 @@ let commit gref =
   Git.clone ~schedule:monthly ~gref "https://gitlab.com/tezos/tezos"
 
 (* https://gitlab.com/tezos/tezos/-/merge_requests/2970/commits *)
-let commits =
+let _commits =
   [
     commit "master";
     commit "638f524f5e8a0bd43271202e98d62683e0120057";
@@ -145,50 +83,26 @@ let commits =
 let do_build ~filter label =
   match filter with None -> true | Some filter -> List.mem label filter
 
-let maybe_build ~filter ~label v =
+let _maybe_build ~filter ~label v =
   if do_build ~filter label then v ()
   else
     let open Current.Syntax in
     let* () = Current.return ~label:("Build skipped: " ^ label) () in
     Current.active `Ready
 
-let pipeline ocluster filter =
-  let open Current.Syntax in
-  let repo_tezos = Commit_sequence.v commits in
-  let build =
+let pipeline ocluster _filter =
+  let repo_tezos =
+    Git.clone ~schedule:monthly ~gref:"master" "https://gitlab.com/tezos/tezos"
+  in
+  let builder =
     match ocluster with
-    | None ->
-        fun ~label spec ->
-          maybe_build ~filter ~label @@ fun () ->
-          Spec.Docker.obuilder_spec_build ~label spec (`Git repo_tezos)
-          |> Current.ignore_value
-    | Some ocluster ->
-        fun ~label spec ->
-          maybe_build ~filter ~label @@ fun () ->
-          Spec.Ocluster.docker_build ~ocluster ~label spec repo_tezos
+    | None -> Lib.Builder.make_docker repo_tezos
+    | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster repo_tezos
   in
-  let analysis = Analyse.v repo_tezos in
-  let build_spec =
-    let+ analysis = analysis in
-    Build.v analysis.version
-  in
-  let build_job = build ~label:"build" build_spec in
-  let analysis = Current.gate ~on:build_job analysis in
-  Current.all_labelled
-    [
-      ( "integration",
-        Integration.job ~build analysis
-        |> Current.collapse ~key:"stage" ~value:"integration" ~input:analysis );
-      ( "packaging",
-        Packaging.job ~build analysis
-        |> Current.collapse ~key:"stage" ~value:"packaging" ~input:analysis );
-      ( "tezt",
-        Tezt.job ~build analysis
-        |> Current.collapse ~key:"stage" ~value:"tezt" ~input:analysis );
-      ( "coverage",
-        Coverage.job ~build analysis
-        |> Current.collapse ~key:"stage" ~value:"coverage" ~input:analysis );
-    ]
+  Stages.v
+    (Merge_request { from_branch = "dev"; to_branch = "master" })
+    (repo_tezos |> Current.map Git.Commit.id)
+  |> Stages.pipeline ~builder
 
 let main current_config mode (`Ocluster_cap cap) (`Filter filter) =
   let ocluster =

@@ -1,3 +1,5 @@
+open Analysis
+
 let template ~script version =
   let build = Build.v version in
   let from = Variables.docker_image_runtime_build_test_dependencies version in
@@ -55,7 +57,6 @@ let job ~(analysis : Tezos_repository.t Current.t) ~build
         type t = string
 
         let pp = Fmt.string
-
         let compare = String.compare
       end)
       (fun name ->
@@ -97,3 +98,5 @@ let job ~build (analysis : Tezos_repository.t Current.t) =
     build ~label:"integration:examples" examples
   in
   Current.all [ protocol_tests; examples ]
+
+let all = Current.return ()

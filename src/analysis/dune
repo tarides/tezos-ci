@@ -1,0 +1,6 @@
+(library
+ (public_name tezos-ci.analysis)
+ (name analysis)
+ (libraries current current_git)
+ (preprocess
+  (pps ppx_deriving_yojson ppx_deriving.ord)))

@@ -1,4 +1,5 @@
 (* Test opam install for each package in the tezos repository *)
+open Analysis
 
 let cache =
   [
@@ -34,7 +35,6 @@ let job ~build (analysis : Tezos_repository.t Current.t) =
       type t = string
 
       let pp = Fmt.string
-
       let compare = String.compare
     end)
     (fun package ->
@@ -45,3 +45,5 @@ let job ~build (analysis : Tezos_repository.t Current.t) =
       let* package = package in
       build ~label:("packaging:" ^ package) spec)
     all_packages
+
+let all = Current.return ()

@@ -1,3 +1,5 @@
+open Analysis
+
 let tezt_job_total = 3
 
 let template ~tezt_job version =

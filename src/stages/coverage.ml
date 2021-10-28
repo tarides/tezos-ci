@@ -1,3 +1,5 @@
+open Analysis
+
 type target = Unit | Python_alpha | Tezt_coverage
 
 let target_to_string = function
@@ -39,3 +41,5 @@ let job ~build (analysis : Tezos_repository.t Current.t) =
          in
          build ~label (Current.map (template ~target) version))
   |> Current.all
+
+let test_coverage = Current.return ()

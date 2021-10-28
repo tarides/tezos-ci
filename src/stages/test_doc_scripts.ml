@@ -1,0 +1,1 @@
+let all = Current.return ~label:"test_doc_scripts" ()

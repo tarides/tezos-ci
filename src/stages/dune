@@ -1,0 +1,6 @@
+(library
+ (public_name tezos-ci.stages)
+ (name stages)
+ (libraries obuilder-spec tezos-ci.analysis tezos-ci.lib)
+ (preprocess
+  (pps ppx_deriving_yojson ppx_deriving.ord)))

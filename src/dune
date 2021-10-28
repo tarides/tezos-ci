@@ -20,6 +20,8 @@
   lwt
   lwt.unix
   obuilder-spec
-  opam-file-format)
+  opam-file-format
+  tezos-ci.analysis
+  tezos-ci.stages)
  (preprocess
   (pps ppx_deriving_yojson ppx_deriving.ord)))

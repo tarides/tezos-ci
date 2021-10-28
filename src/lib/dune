@@ -1,0 +1,11 @@
+(library
+ (public_name tezos-ci.lib)
+ (name lib)
+ (libraries
+  obuilder-spec
+  tezos-ci.analysis
+  current_docker
+  current.fs
+  current_ocluster)
+ (preprocess
+  (pps ppx_deriving_yojson ppx_deriving.ord)))
