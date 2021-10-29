@@ -1,5 +1,4 @@
 let ( let* ) = Result.bind
-
 let ( let+ ) r f = Result.map f r
 
 module Active_protocol = struct
@@ -68,7 +67,33 @@ module Version = struct
            (`Msg "Failed to find 'opam_repository_tag' in 'scripts/version.sh'")
 end
 
+module Current_git = struct
+  include Current_git
+
+  module Commit_id = struct
+    include Commit_id
+
+    let to_yojson v =
+      `Assoc
+        [
+          ("hash", `String (hash v));
+          ("gref", `String (gref v));
+          ("repo", `String (repo v));
+        ]
+
+    let of_yojson json =
+      let open Yojson.Safe.Util in
+      try
+        let hash = json |> member "hash" |> to_string in
+        let gref = json |> member "gref" |> to_string in
+        let repo = json |> member "repo" |> to_string in
+        Ok (v ~repo ~gref ~hash)
+      with Type_error (msg, _) -> Error msg
+  end
+end
+
 type t = {
+  commit : Current_git.Commit_id.t;
   all_protocols : string list;
   active_protocols : Active_protocol.t list;
   active_testing_protocol_versions : string list;
@@ -79,7 +104,6 @@ type t = {
 [@@deriving yojson]
 
 let marshal t = t |> to_yojson |> Yojson.Safe.to_string
-
 let unmarshal t = t |> Yojson.Safe.from_string |> of_yojson |> Result.get_ok
 
 let find_opam folder =
@@ -107,7 +131,7 @@ let parse_protocol_file file =
   let+ lines = Bos.OS.File.read_lines file in
   List.map (String.map (function '-' -> '_' | x -> x)) lines
 
-let make repo_path =
+let make ~commit repo_path =
   Bos.OS.Dir.with_current repo_path
     (fun () ->
       (* opam-pin.sh *)
@@ -150,6 +174,7 @@ let make repo_path =
       let* version = Version.parse () in
       Ok
         {
+          commit;
           all_protocols;
           active_testing_protocol_versions;
           active_protocols;

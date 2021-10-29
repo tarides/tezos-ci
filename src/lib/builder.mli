@@ -1,12 +1,7 @@
 type t
 
-val make_docker : Current_git.Commit.t Current.t -> t
-
-val make_ocluster :
-  [ `Docker | `Obuilder ] ->
-  Current_ocluster.t ->
-  Current_git.Commit.t Current.t ->
-  t
+val make_docker : t
+val make_ocluster : [ `Docker | `Obuilder ] -> Current_ocluster.t -> t
 
 type pool = Arm64 | X86_64
 

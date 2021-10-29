@@ -2,9 +2,11 @@ open Analysis
 
 let tezt_job_total = 3
 
-let template ~tezt_job version =
-  let build = Build.v version in
-  let from = Variables.docker_image_runtime_build_test_dependencies version in
+let template ~tezt_job analysis =
+  let build = Build.v analysis in
+  let from =
+    Variables.docker_image_runtime_build_test_dependencies analysis.version
+  in
   Obuilder_spec.(
     stage ~from ~child_builds:[ ("build", build) ]
       [
@@ -26,14 +28,8 @@ let template ~tezt_job version =
       ])
 
 let job ~build (analysis : Tezos_repository.t Current.t) =
-  let open Current.Syntax in
-  let version =
-    let+ analysis = analysis in
-    analysis.version
-  in
-
   List.init tezt_job_total (fun n -> n + 1) (* 1, 2, ..., tezt_job_total *)
   |> List.map (fun n ->
          let label = Fmt.str "integration:tezt:%d" n in
-         build ~label (Current.map (template ~tezt_job:n) version))
+         build ~label (Current.map (template ~tezt_job:n) analysis))
   |> Current.all

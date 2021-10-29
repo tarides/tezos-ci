@@ -15,6 +15,7 @@ module Version : sig
 end
 
 type t = {
+  commit : Current_git.Commit_id.t;
   all_protocols : string list;  (** List of /src/proto_* in the source folder *)
   active_protocols : Active_protocol.t list;
       (** Active protocols according to the /active_protocol_versions file *)
@@ -26,7 +27,8 @@ type t = {
   version : Version.t;  (** Content of /scripts/version.sh *)
 }
 
-val make : Fpath.t -> (t, [ `Msg of string ]) result
+val make :
+  commit:Current_git.Commit_id.t -> Fpath.t -> (t, [ `Msg of string ]) result
 (** [make path] Explore the content of the repository checked out in [path] and
     gather all required metadata. *)
 

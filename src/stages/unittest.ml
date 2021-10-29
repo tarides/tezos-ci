@@ -1,1 +1,2 @@
-let all = Current.return ~label:"unittest:all" ()
+let all ~builder:_ (_analysis : Analysis.Tezos_repository.t Current.t) =
+  Current.return ()

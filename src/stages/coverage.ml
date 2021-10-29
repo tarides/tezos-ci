@@ -7,9 +7,11 @@ let target_to_string = function
   | Python_alpha -> "test-python-alpha"
   | Tezt_coverage -> "test-tezt-coverage"
 
-let template ~target version =
-  let build = Build.v version in
-  let from = Variables.docker_image_runtime_build_test_dependencies version in
+let template ~target analysis =
+  let build = Build.v analysis in
+  let from =
+    Variables.docker_image_runtime_build_test_dependencies analysis.version
+  in
   Obuilder_spec.(
     stage ~from ~child_builds:[ ("build", build) ]
       [
@@ -28,18 +30,13 @@ let template ~target version =
         run "tail -n 100 _coverage_report/*";
       ])
 
-let job ~build (analysis : Tezos_repository.t Current.t) =
-  let open Current.Syntax in
-  let version =
-    let+ analysis = analysis in
-    analysis.version
-  in
+let _job ~build (analysis : Tezos_repository.t Current.t) =
   [ Unit ]
   |> List.map (fun target ->
          let label =
            Fmt.str "integration:test_coverage:%s" (target_to_string target)
          in
-         build ~label (Current.map (template ~target) version))
+         build ~label (Current.map (template ~target) analysis))
   |> Current.all
 
 let test_coverage = Current.return ()

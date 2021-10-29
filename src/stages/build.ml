@@ -8,37 +8,44 @@ let cache =
     - tezos-*
     - src/proto_*/parameters/*.json
     - _build/default/src/lib_protocol_compiler/main_native.exe *)
-let v version =
-  let from = Variables.docker_image_runtime_build_test_dependencies version in
+let v (tezos_repository : Analysis.Tezos_repository.t) =
+  let from =
+    Variables.docker_image_runtime_build_test_dependencies
+      tezos_repository.version
+  in
   let build =
     Obuilder_spec.(
       stage ~from
+        ~child_builds:[ ("build_src", Lib.Fetch.spec tezos_repository) ]
         [
           user ~uid:100 ~gid:100;
           env "HOME" "/home/tezos";
           workdir "/tezos/";
           run "sudo chown 100:100 /tezos/";
-          copy [ "scripts/version.sh" ] ~dst:"./scripts/version.sh";
+          copy ~from:(`Build "build_src")
+            [ "/tezos/scripts/version.sh" ]
+            ~dst:"./scripts/version.sh";
           run ". ./scripts/version.sh";
           (* Load the environment poetry previously created in the docker image.
              Give access to the Python dependencies/executables *)
           run ". $HOME/.venv/bin/activate";
-          (* TODO: analysis step to figure out active protocols and step caching *)
-          copy
+          copy ~from:(`Build "build_src")
             [
-              "active_testing_protocol_versions";
-              "active_protocol_versions";
-              "poetry.lock";
-              "pyproject.toml";
-              "Makefile";
-              "dune";
-              "dune-project";
+              "/tezos/active_testing_protocol_versions";
+              "/tezos/active_protocol_versions";
+              "/tezos/poetry.lock";
+              "/tezos/pyproject.toml";
+              "/tezos/Makefile";
+              "/tezos/dune";
+              "/tezos/dune-project";
             ]
             ~dst:"./";
-          copy [ "src" ] ~dst:"src/";
-          copy [ "vendors" ] ~dst:"vendors/";
-          copy
-            [ "scripts/remove-old-protocols.sh" ]
+          (* TODO: copy the subset of /src that is actually useful *)
+          copy ~from:(`Build "build_src") [ "/tezos/src" ] ~dst:"src";
+          copy ~from:(`Build "build_src") [ "/tezos/vendors" ] ~dst:"vendors";
+          copy ~from:(`Build "build_src") [ "/tezos/.git" ] ~dst:".git";
+          copy ~from:(`Build "build_src")
+            [ "/tezos/scripts/remove-old-protocols.sh" ]
             ~dst:"scripts/remove-old-protocols.sh";
           run "./scripts/remove-old-protocols.sh";
           (* 1. Some basic, fast sanity checks *)
@@ -60,17 +67,9 @@ let v version =
       [ copy ~from:(`Build "tzbuild") [ "/tezos/dist" ] ~dst:"/dist" ])
 
 let arm64 ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
-  let open Current.Syntax in
-  let spec =
-    let+ analysis = analysis in
-    v analysis.version
-  in
+  let spec = Current.map v analysis in
   Lib.Builder.build ~pool:Arm64 ~label:"build:arm64" builder spec
 
 let x86_64 ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
-  let open Current.Syntax in
-  let spec =
-    let+ analysis = analysis in
-    v analysis.version
-  in
+  let spec = Current.map v analysis in
   Lib.Builder.build ~pool:X86_64 ~label:"build:x86_64" builder spec

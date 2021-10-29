@@ -1,14 +1,17 @@
 open Analysis
 
-let template ~script version =
-  let build = Build.v version in
-  let from = Variables.docker_image_runtime_build_test_dependencies version in
+let template ~script analysis =
+  let build = Build.v analysis in
+  let from =
+    Variables.docker_image_runtime_build_test_dependencies analysis.version
+  in
   Obuilder_spec.(
-    stage ~from ~child_builds:[ ("build", build) ]
+    stage ~from
+      ~child_builds:[ ("build", build); ("src", Lib.Fetch.spec analysis) ]
       [
         user ~uid:100 ~gid:100;
         workdir "/home/tezos";
-        copy [ "/" ] ~dst:"./";
+        copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
         copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
         run "find . -maxdepth 3";
         run ". ./scripts/version.sh";
@@ -43,7 +46,7 @@ let examples =
   in
   template ~script
 
-let job ~(analysis : Tezos_repository.t Current.t) ~build
+let job ~(analysis : Tezos_repository.t Current.t) ~builder
     (protocol : Tezos_repository.Active_protocol.t Current.t) =
   let open Current.Syntax in
   let slow_tests =
@@ -62,24 +65,26 @@ let job ~(analysis : Tezos_repository.t Current.t) ~build
       (fun name ->
         let spec =
           let+ name = name and+ protocol = protocol and+ analysis = analysis in
-          slow_test ~protocol_id:protocol.id name analysis.version
+          slow_test ~protocol_id:protocol.id name analysis
         in
         let* protocol = protocol and* name = name in
-        build ~label:("integration:test_" ^ protocol.id ^ "_" ^ name) spec)
+        Lib.Builder.build builder
+          ~label:("integration:test_" ^ protocol.id ^ "_" ^ name)
+          spec)
       slow_tests
   in
   let batch_test =
     let+ protocol = protocol and+ analysis = analysis in
-    fast_test ~protocol_id:protocol.id analysis.version
+    fast_test ~protocol_id:protocol.id analysis
   in
   Current.all
     [
       slow_tests;
       (let* protocol = protocol in
-       build ~label:(protocol.id ^ "_batch") batch_test);
+       Lib.Builder.build builder ~label:(protocol.id ^ "_batch") batch_test);
     ]
 
-let job ~build (analysis : Tezos_repository.t Current.t) =
+let all ~builder (analysis : Tezos_repository.t Current.t) =
   let open Current.Syntax in
   let active_protocols =
     let+ analysis = analysis in
@@ -88,15 +93,10 @@ let job ~build (analysis : Tezos_repository.t Current.t) =
   let protocol_tests =
     Current.list_iter ~collapse_key:"active-protocols"
       (module Tezos_repository.Active_protocol)
-      (job ~analysis ~build) active_protocols
+      (job ~analysis ~builder) active_protocols
   in
   let examples =
-    let examples =
-      let+ analysis = analysis in
-      examples analysis.version
-    in
-    build ~label:"integration:examples" examples
+    let examples = Current.map examples analysis in
+    Lib.Builder.build ~label:"integration:examples" builder examples
   in
   Current.all [ protocol_tests; examples ]
-
-let all = Current.return ()

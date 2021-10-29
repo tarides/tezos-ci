@@ -78,18 +78,21 @@ let stages =
       [
         (Development, "x86_64", Build.x86_64);
         (Development_arm64, "arm64", Build.arm64);
-        (*  (Development, Doc.build);*)
+        (Development, "doc", Doc.build);
       ] );
-    (* ( "sanity_ci",
-         [ (Development, Lints.sanity_ci); (Always, Lints.docker_hadolint) ] );
-       ( "test",
-         [
-           (Development, Integration.all);
-           (Always, Lints.misc_checks);
-           (Always, Lints.check_precommit_hook);
-           (Development, Unittest.all);
-         ] );
-       ( "doc",
+    ( "sanity_ci",
+      [
+        (Development, "sanity_ci", Lints.sanity_ci);
+        (Always, "docker_hadolint", Lints.docker_hadolint);
+      ] );
+    ( "test",
+      [
+        (Development, "integration", Integration.all);
+        (Always, "misc", Lints.misc_checks);
+        (Always, "check_precommit_hook", Lints.check_precommit_hook);
+        (Development, "unit tests", Unittest.all);
+      ] );
+    (* ( "doc",
          [
            (Master, Publish.documentation);
            (Development_documentation, Test_doc_scripts.all);
@@ -117,6 +120,7 @@ let pipeline ~builder { source; commit } =
         analysis
       in
       let jobs =
+        Current.with_context analysis @@ fun () ->
         tasks
         |> List.map (fun (mode, name, current) ->
                match should_run mode source with

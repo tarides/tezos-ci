@@ -96,8 +96,8 @@ let pipeline ocluster _filter =
   in
   let builder =
     match ocluster with
-    | None -> Lib.Builder.make_docker repo_tezos
-    | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster repo_tezos
+    | None -> Lib.Builder.make_docker
+    | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster
   in
   Stages.v
     (Merge_request { from_branch = "dev"; to_branch = "master" })
