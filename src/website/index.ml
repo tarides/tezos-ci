@@ -65,7 +65,7 @@ let show_pipeline ~state name =
          stages);
   ]
 
-let rec get_job_tree (stage : Stages.Task.subtask_node) =
+let rec get_job_tree ~uri_base (stage : Stages.Task.subtask_node) =
   let emoji = emoji_of_status (Stages.Task.status stage) in
   let open Tyxml_html in
   match stage.value with
@@ -73,12 +73,14 @@ let rec get_job_tree (stage : Stages.Task.subtask_node) =
       [
         emoji;
         txt stage.name;
-        a ~a:[ a_href ("/job/" ^ job_id) ] [ txt "=> job" ];
+        a ~a:[ a_href (uri_base ^ "/" ^ job_id) ] [ txt "=> job" ];
       ]
   | Item _ -> [ emoji; txt stage.name ]
   | Stage rest ->
       [
-        emoji; txt stage.name; ul (List.map (fun v -> li (get_job_tree v)) rest);
+        emoji;
+        txt stage.name;
+        ul (List.map (fun v -> li (get_job_tree ~uri_base v)) rest);
       ]
 
 let show_pipeline_task ~state name stage_name =
@@ -102,7 +104,69 @@ let show_pipeline_task ~state name stage_name =
         emoji_of_status (Stages.Task.status stage); txt ("Stage " ^ stage_name);
       ];
     h3 [ txt "Job tree" ];
-    div (get_job_tree stage);
+    div (get_job_tree ~uri_base:("/pipelines/" ^ name ^ "/" ^ stage_name) stage);
+  ]
+
+let get_job_text job_id =
+  let path = Current.Job.log_path job_id |> Result.get_ok in
+  let max_log_chunk_size = 102400L in
+  let start = 0L in
+  (* ocurrent/lib_web/job.ml *)
+  let ch = open_in_bin (Fpath.to_string path) in
+  Fun.protect ~finally:(fun () -> close_in ch) @@ fun () ->
+  let len = LargeFile.in_channel_length ch in
+  let ( + ) = Int64.add in
+  let ( - ) = Int64.sub in
+  let start = if start < 0L then len + start else start in
+  let start = if start < 0L then 0L else if start > len then len else start in
+  LargeFile.seek_in ch start;
+  let len = min max_log_chunk_size (len - start) in
+  really_input_string ch (Int64.to_int len)
+
+let show_pipeline_task_job ~state name stage_name wildcard =
+  let job_id =
+    let wld = Routes.Parts.wildcard_match wildcard in
+    String.sub wld 1 (String.length wld - 1)
+  in
+  Printf.printf "job id: %s\n%!" job_id;
+  let pipeline = StringMap.find name !state in
+  let stages =
+    match pipeline.Stages.Task.value with
+    | Item _ -> assert false
+    | Stage stages -> stages
+  in
+  let stage = List.find (fun t -> t.Stages.Task.name = stage_name) stages in
+
+  let open Tyxml_html in
+  [
+    div
+      ~a:[ a_style "display: flex;" ]
+      [
+        div ~a:[ a_style "flex: 1" ]
+          [
+            h1
+              [
+                emoji_of_status (Stages.Task.status pipeline);
+                a
+                  ~a:[ a_href ("/pipelines/" ^ name) ]
+                  [ txt ("Pipeline " ^ name) ];
+              ];
+            h2
+              [
+                emoji_of_status (Stages.Task.status stage);
+                a
+                  ~a:[ a_href ("/pipelines/" ^ name ^ "/" ^ stage_name) ]
+                  [ txt ("Stage " ^ stage_name) ];
+              ];
+            h3 [ txt "Job tree" ];
+            div
+              (get_job_tree
+                 ~uri_base:("/pipelines/" ^ name ^ "/" ^ stage_name)
+                 stage);
+          ];
+        div ~a:[ a_style "flex: 1" ]
+          [ h2 [ txt "Job log" ]; pre [ txt (get_job_text job_id) ] ];
+      ];
   ]
 
 let internal_routes ~state =
@@ -111,6 +175,7 @@ let internal_routes ~state =
       empty @--> list_pipelines ~state;
       (str /? nil) @--> show_pipeline ~state;
       (str / str /? nil) @--> show_pipeline_task ~state;
+      (str / str /? wildcard) @--> show_pipeline_task_job ~state;
     ]
 
 let handle state wildcard_path =

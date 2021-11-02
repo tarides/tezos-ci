@@ -7,15 +7,19 @@ let cache =
       "packaging-dune-cache";
   ]
 
-let v ~package version =
-  let from = Variables.docker_image_runtime_build_test_dependencies version in
+let v ~package (tezos_repository : Analysis.Tezos_repository.t) =
+  let from =
+    Variables.docker_image_runtime_build_test_dependencies
+      tezos_repository.version
+  in
   Obuilder_spec.(
     stage ~from
+      ~child_builds:[ ("build_src", Lib.Fetch.spec tezos_repository) ]
       [
         user ~uid:100 ~gid:100;
         env "HOME" "/home/tezos";
         workdir "/tezos/";
-        copy [ "." ] ~dst:".";
+        copy ~from:(`Build "build_src") [ "/tezos/" ] ~dst:"./";
         run "./scripts/opam-pin.sh";
         run "opam depext --yes %s" package;
         env "DUNE_CACHE" "enabled";
@@ -40,7 +44,7 @@ let all ~builder (analysis : Tezos_repository.t Current.t) =
     (fun package ->
       let spec =
         let+ package = package and+ analysis = analysis in
-        v ~package analysis.version
+        v ~package analysis
       in
       let name =
         let+ package = package in

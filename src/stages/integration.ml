@@ -111,4 +111,4 @@ let all ~builder (analysis : Tezos_repository.t Current.t) =
     Lib.Builder.build ~label:"integration:examples" builder examples
     |> Task.single ~name:"integration:examples"
   in
-  Task.all ~name:(Current.return "intgration:all") [ protocol_tests; examples ]
+  Task.all ~name:(Current.return "intgeration") [ protocol_tests; examples ]

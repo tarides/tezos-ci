@@ -10,10 +10,10 @@ type 'a status =
 let status_of_state_and_metadata state metadata =
   match (state, metadata) with
   | Ok v, _ -> Ok v
-  | (Error (`Active _) as e), _ -> e
   | (Error (`Skipped _) as e), _ -> e
   | Error _, Some { Current.Metadata.job_id = None; _ } -> Error `Blocked
   | Error _, None -> Error `Blocked
+  | (Error (`Active _) as e), _ -> e
   | Error (`Msg "Cancelled"), _ -> Error `Cancelled
   | (Error (`Msg _) as e), _ -> e
 
@@ -49,6 +49,14 @@ type t = { current : unit Current.t; subtasks_status : subtask_node Current.t }
 
 let v current subtasks_status = { current; subtasks_status }
 
+(* TODO: cmdline *)
+let skip_failures = true
+
+let maybe_catch current =
+  if skip_failures then
+    Current.catch ~hidden:true current |> Current.map (fun _ -> ())
+  else current
+
 let single_c ~name current =
   let open Current.Syntax in
   let subtasks_status =
@@ -57,7 +65,7 @@ let single_c ~name current =
     and+ name = name in
     status_of_state_and_metadata state metadata |> item ~name ?metadata
   in
-  { current; subtasks_status }
+  { current = maybe_catch current; subtasks_status }
 
 let single ~name current =
   let open Current.Syntax in
@@ -66,7 +74,7 @@ let single ~name current =
     and+ metadata = Current.Analysis.metadata current in
     status_of_state_and_metadata state metadata |> item ~name ?metadata
   in
-  { current; subtasks_status }
+  { current = maybe_catch current; subtasks_status }
 
 type maker = builder:Lib.Builder.t -> Analysis.Tezos_repository.t Current.t -> t
 
