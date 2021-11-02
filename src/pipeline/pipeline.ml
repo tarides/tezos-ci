@@ -73,6 +73,7 @@ let should_run mode source =
   | Always, _ -> Yes
 
 let stages =
+  let open Stages in
   [
     ( "build",
       [
@@ -92,46 +93,90 @@ let stages =
         (Always, "check_precommit_hook", Lints.check_precommit_hook);
         (Development, "unit tests", Unittest.all);
       ] );
-    (* ( "doc",
-         [
-           (Master, Publish.documentation);
-           (Development_documentation, Test_doc_scripts.all);
-         ] );
-       ("packaging", [ (Opam_packaging, Packaging.all) ]);
-       ("build_release", [ (Master_and_releases, Publish.build_release) ]);
-       ("publish_release", [ (Commit_tag_is_version, Publish.publish_release) ]);
-       ("test_coverage", [ (Development_coverage, Coverage.test_coverage) ]);
-       ( "manual",
-         [
-           (Development_manual, Doc.build_all); (Development_manual, Doc.linkcheck);
-         ] );*)
+    ( "doc",
+      [
+        (Master, "documentation", Publish.documentation);
+        (Development_documentation, "dev documentation", Test_doc_scripts.all);
+      ] );
+    ("packaging", [ (Opam_packaging, "packaging", Packaging.all) ]);
+    ( "build_release",
+      [ (Master_and_releases, "build_release", Publish.build_release) ] );
+    ( "publish_release",
+      [ (Commit_tag_is_version, "publish_release", Publish.publish_release) ] );
+    ( "test_coverage",
+      [ (Development_coverage, "test_coverage", Coverage.test_coverage) ] );
+    ( "manual",
+      [
+        (Development_manual, "doc:build_all", Doc.build_all);
+        (Development_manual, "doc:linkcheck", Doc.linkcheck);
+      ] );
   ]
+
+let pipeline_stage ~stage_name ~builder ~analysis ~source stage =
+  let jobs =
+    stage
+    |> List.map (fun (mode, name, task) ->
+           match should_run mode source with
+           | No ->
+               Either.Left
+                 (Current.return
+                    ~label:("Skipped " ^ stage_name ^ ":" ^ name)
+                    ())
+           | _ ->
+               Printf.printf "%s\n%!" name;
+               Right (mode, name, task ~builder analysis))
+  in
+
+  let pages =
+    List.filter_map
+      (function
+        | Either.Left _ -> None | Right (mode, name, v) -> Some (mode, name, v))
+      jobs
+  in
+
+  let current =
+    Current.with_context analysis @@ fun () ->
+    List.map
+      (function Either.Left v -> v | Right (_, _, v) -> v.Stages.Task.current)
+      jobs
+    |> Current.all
+    |> Current.collapse ~key:"stages" ~value:stage_name ~input:analysis
+  in
+  (current, pages)
 
 (* execute the pipeline *)
 let pipeline ~builder { source; commit } =
   let open Current.Syntax in
   let analysis = Analysis.Analyse.v (Current_git.fetch commit) in
-  List.fold_left
-    (fun analysis (stage_name, tasks) ->
-      let analysis =
-        (* add a label *)
-        let+ () = Current.return ~label:stage_name ()
-        and+ analysis = analysis in
-        analysis
-      in
-      let jobs =
-        Current.with_context analysis @@ fun () ->
-        tasks
-        |> List.map (fun (mode, name, current) ->
-               match should_run mode source with
-               | No ->
-                   Current.return
-                     ~label:("Skipped " ^ stage_name ^ ":" ^ name)
-                     ()
-               | _ -> current ~builder analysis)
-        |> Current.all
-        |> Current.collapse ~key:"stages" ~value:stage_name ~input:analysis
-      in
-      Current.gate ~on:jobs analysis)
-    analysis stages
-  |> Current.ignore_value
+  let current, pages =
+    List.fold_left
+      (fun (gate, rest) (stage_name, tasks) ->
+        let gate =
+          (* add a label *)
+          let+ () = Current.return ~label:stage_name () and+ () = gate in
+          ()
+        in
+        let jobs, pages =
+          let gated_builder = Lib.Builder.gate ~gate builder in
+          pipeline_stage ~stage_name ~builder:gated_builder ~source ~analysis
+            tasks
+        in
+        (Current.gate ~on:jobs gate, (stage_name, pages) :: rest))
+      (Current.return (), [])
+      stages
+  in
+
+  let state =
+    pages
+    |> List.rev
+    |> List.map (fun (stage_name, substages) ->
+           List.map
+             (fun (_mode, _name, task) -> task.Stages.Task.subtasks_status)
+             substages
+           |> Current.list_seq
+           |> Current.map (Stages.Task.group ~name:stage_name))
+    |> Current.list_seq
+    |> Current.map (Stages.Task.group ~name:"pipeline")
+  in
+
+  Stages.Task.v (Current.ignore_value current) state

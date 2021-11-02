@@ -39,4 +39,5 @@ let _job ~build (analysis : Tezos_repository.t Current.t) =
          build ~label (Current.map (template ~target) analysis))
   |> Current.all
 
-let test_coverage = Current.return ()
+let test_coverage ~builder:_ _ =
+  Task.empty ~name:"integration:test_coverage"

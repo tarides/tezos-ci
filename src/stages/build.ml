@@ -67,9 +67,11 @@ let v (tezos_repository : Analysis.Tezos_repository.t) =
       [ copy ~from:(`Build "tzbuild") [ "/tezos/dist" ] ~dst:"/dist" ])
 
 let arm64 ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
-  let spec = Current.map v analysis in
-  Lib.Builder.build ~pool:Arm64 ~label:"build:arm64" builder spec
+  Current.map v analysis
+  |> Lib.Builder.build ~pool:Arm64 ~label:"build:arm64" builder
+  |> Task.single ~name:"build:arm64"
 
 let x86_64 ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
-  let spec = Current.map v analysis in
-  Lib.Builder.build ~pool:X86_64 ~label:"build:x86_64" builder spec
+  Current.map v analysis
+  |> Lib.Builder.build ~pool:X86_64 ~label:"build:x86_64" builder
+  |> Task.single ~name:"build:x86_64"

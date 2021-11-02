@@ -1,3 +1,3 @@
-val documentation : unit Current.t
-val publish_release : unit Current.t
-val build_release : unit Current.t
+val documentation : Task.maker
+val publish_release : Task.maker
+val build_release : Task.maker

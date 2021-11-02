@@ -24,13 +24,13 @@ let v ~package version =
         run ~cache "opam reinstall --yes --with-test %s" package;
       ])
 
-let job ~build (analysis : Tezos_repository.t Current.t) =
+let all ~builder (analysis : Tezos_repository.t Current.t) =
   let open Current.Syntax in
   let all_packages =
     let+ analysis = analysis in
     analysis.bin_packages @ analysis.lib_packages
   in
-  Current.list_iter ~collapse_key:"packaging"
+  Task.list_iter ~collapse_key:"packaging"
     (module struct
       type t = string
 
@@ -42,8 +42,9 @@ let job ~build (analysis : Tezos_repository.t Current.t) =
         let+ package = package and+ analysis = analysis in
         v ~package analysis.version
       in
-      let* package = package in
-      build ~label:("packaging:" ^ package) spec)
+      let name =
+        let+ package = package in
+        "packaging:" ^ package
+      in
+      Lib.Builder.build builder ~label:"packaging" spec |> Task.single_c ~name)
     all_packages
-
-let all = Current.return ()

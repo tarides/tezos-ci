@@ -22,6 +22,7 @@ let sanity_ci ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
         ])
   in
   Lib.Builder.build ~label:"lints:sanity_ci" builder spec
+  |> Task.single ~name:"lints:sanity_ci"
 
 let docker_hadolint ~builder (analysis : Analysis.Tezos_repository.t Current.t)
     =
@@ -41,6 +42,7 @@ let docker_hadolint ~builder (analysis : Analysis.Tezos_repository.t Current.t)
         ])
   in
   Lib.Builder.build ~label:"lints:docker_hadolint" builder spec
+  |> Task.single ~name:"lints:docker_hadolint"
 
 let misc_checks ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
   let open Current.Syntax in
@@ -55,30 +57,32 @@ let misc_checks ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
         ~child_builds:[ ("src", Lib.Fetch.spec analysis) ]
         [
           user ~uid:100 ~gid:100;
-          workdir "/home/tezos";
+          workdir "/home/tezos/src";
           copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
           run "find . -maxdepth 3";
           run ". ./scripts/version.sh";
-          run ". /home/tezos/.venv/bin/activate";
+          env "VIRTUAL_ENV" "/home/tezos/.venv";
+          env "PATH" "$VIRTUAL_ENV/bin:$PATH";
           (* checks that all deps of opam packages are already installed *)
           run "./scripts/opam-check.sh";
           (* misc linting *)
           run
             "find . ! -path \"./_opam/*\" -name \"*.opam\" -exec opam lint {} \
              +;";
-          run "make check-linting";
-          run "make check-python-linting";
+          run "opam exec -- make check-linting";
+          run "opam exec -- make check-python-linting";
           (* python checks *)
-          run "make -C tests_python typecheck";
+          run "opam exec -- make -C tests_python typecheck";
           (* ensure that ...*)
           run "git apply devtools/protocol-print/add-hack-module.patch";
           run
-            {|dune runtest -p tezos-test-helpers ||
+            {|opam exec -- dune runtest -p tezos-test-helpers ||
     { echo "You have probably defined some tests in dune files without specifying to which 'package' they belong."; exit 1; }
 |};
         ])
   in
   Lib.Builder.build ~label:"lints:misc_checks" builder spec
+  |> Task.single ~name:"lints:misc_checks"
 
 let check_precommit_hook ~builder
     (analysis : Analysis.Tezos_repository.t Current.t) =
@@ -107,3 +111,4 @@ let check_precommit_hook ~builder
         ])
   in
   Lib.Builder.build ~label:"lints:check_precommit_hook" builder spec
+  |> Task.single ~name:"lints:check_precommit_hook"

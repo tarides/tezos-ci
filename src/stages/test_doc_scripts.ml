@@ -1,1 +1,2 @@
-let all = Current.return ~label:"test_doc_scripts" ()
+
+let all ~builder:_ _ = Task.empty ~name:"test_doc_scripts:build_all"

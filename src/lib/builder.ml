@@ -59,14 +59,16 @@ type mode =
   | Ocluster_docker of Current_ocluster.t
   | Ocluster_obuilder of Current_ocluster.t
 
-type t = mode
+type t = { mode : mode; gates : unit Current.t list }
 
-let make_docker = Host_docker
+let make_docker = { mode = Host_docker; gates = [] }
 
 let make_ocluster mode ocluster =
   match mode with
-  | `Docker -> Ocluster_docker ocluster
-  | `Obuilder -> Ocluster_obuilder ocluster
+  | `Docker -> { mode = Ocluster_docker ocluster; gates = [] }
+  | `Obuilder -> { mode = Ocluster_obuilder ocluster; gates = [] }
+
+let gate ~gate t = { t with gates = gate :: t.gates }
 
 type pool = Arm64 | X86_64
 
@@ -76,7 +78,12 @@ let pool_to_string = function
 
 (* TODO: default to host's pool *)
 let build ?(pool = X86_64) ~label t spec =
-  match t with
+  let spec =
+    let open Current.Syntax in
+    let+ () = Current.all t.gates and+ spec = spec in
+    spec
+  in
+  match t.mode with
   | Host_docker -> Docker_builder.build ~label spec |> Current.ignore_value
   | Ocluster_docker ocluster ->
       Ocluster_builder.docker_build ~pool:(pool_to_string pool) ~ocluster ~label

@@ -18,6 +18,7 @@ let build ~builder (analysis : Tezos_repository.t Current.t) =
         ])
   in
   Lib.Builder.build ~label:"documentation:build" builder spec
+  |> Task.single ~name:"documentation:build"
 
-let build_all = Current.return ()
-let linkcheck = Current.return ()
+let build_all ~builder:_ _ = Task.empty ~name:"documentation:build_all"
+let linkcheck ~builder:_ _ = Task.empty ~name:"documentation:linkcheck"

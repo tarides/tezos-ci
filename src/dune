@@ -22,6 +22,7 @@
   obuilder-spec
   opam-file-format
   tezos-ci.analysis
-  tezos-ci.stages)
+  tezos-ci.pipeline
+  tezos-ci.website)
  (preprocess
   (pps ppx_deriving_yojson ppx_deriving.ord)))

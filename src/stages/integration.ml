@@ -10,12 +10,13 @@ let template ~script analysis =
       ~child_builds:[ ("build", build); ("src", Lib.Fetch.spec analysis) ]
       [
         user ~uid:100 ~gid:100;
-        workdir "/home/tezos";
+        workdir "/home/tezos/src";
         copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
         copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
         run "find . -maxdepth 3";
         run ". ./scripts/version.sh";
-        run ". /home/tezos/.venv/bin/activate";
+        env "VIRTUAL_ENV" "/home/tezos/.venv";
+        env "PATH" "$VIRTUAL_ENV/bin:$PATH";
         run "mkdir tests_python/tmp";
         run "touch tests_python/tmp/empty__to_avoid_glob_failing";
         workdir "tests_python";
@@ -55,7 +56,7 @@ let job ~(analysis : Tezos_repository.t Current.t) ~builder
   in
 
   let slow_tests =
-    Current.list_iter ~collapse_key:"slow-test"
+    Task.list_iter ~collapse_key:"slow-test"
       (module struct
         type t = string
 
@@ -67,21 +68,31 @@ let job ~(analysis : Tezos_repository.t Current.t) ~builder
           let+ name = name and+ protocol = protocol and+ analysis = analysis in
           slow_test ~protocol_id:protocol.id name analysis
         in
-        let* protocol = protocol and* name = name in
-        Lib.Builder.build builder
-          ~label:("integration:test_" ^ protocol.id ^ "_" ^ name)
-          spec)
+        let name =
+          let+ protocol = protocol and+ name = name in
+          "integration:test_" ^ protocol.id ^ "_" ^ name
+        in
+        Lib.Builder.build builder ~label:"integration:test" spec
+        |> Task.single_c ~name)
       slow_tests
   in
   let batch_test =
     let+ protocol = protocol and+ analysis = analysis in
     fast_test ~protocol_id:protocol.id analysis
   in
-  Current.all
+  let name =
+    let+ protocol = protocol in
+    protocol.name
+  in
+  Task.all ~name
     [
       slow_tests;
-      (let* protocol = protocol in
-       Lib.Builder.build builder ~label:(protocol.id ^ "_batch") batch_test);
+      (let name =
+         let+ protocol = protocol in
+         protocol.id ^ "_batch"
+       in
+       Lib.Builder.build builder ~label:"integration:batch" batch_test
+       |> Task.single_c ~name);
     ]
 
 let all ~builder (analysis : Tezos_repository.t Current.t) =
@@ -91,12 +102,13 @@ let all ~builder (analysis : Tezos_repository.t Current.t) =
     analysis.active_protocols
   in
   let protocol_tests =
-    Current.list_iter ~collapse_key:"active-protocols"
+    Task.list_iter ~collapse_key:"active-protocols"
       (module Tezos_repository.Active_protocol)
       (job ~analysis ~builder) active_protocols
   in
   let examples =
     let examples = Current.map examples analysis in
     Lib.Builder.build ~label:"integration:examples" builder examples
+    |> Task.single ~name:"integration:examples"
   in
-  Current.all [ protocol_tests; examples ]
+  Task.all ~name:(Current.return "intgration:all") [ protocol_tests; examples ]

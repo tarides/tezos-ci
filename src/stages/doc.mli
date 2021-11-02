@@ -1,3 +1,3 @@
-val build : Task.t
-val build_all : unit Current.t
-val linkcheck : unit Current.t
+val build : Task.maker
+val build_all : Task.maker
+val linkcheck : Task.maker

@@ -1,1 +1,1 @@
-val test_coverage : unit Current.t
+val test_coverage : Task.maker

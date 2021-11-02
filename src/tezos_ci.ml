@@ -1,6 +1,5 @@
 module Git = Current_git
 module Docker = Current_docker.Default
-open Stages
 
 let () = Logging.init ()
 let monthly = Current_cache.Schedule.v ~valid_for:(Duration.of_day 30) ()
@@ -90,7 +89,7 @@ let _maybe_build ~filter ~label v =
     let* () = Current.return ~label:("Build skipped: " ^ label) () in
     Current.active `Ready
 
-let pipeline ocluster _filter =
+let pipeline ~index ocluster _filter =
   let repo_tezos =
     Git.clone ~schedule:monthly ~gref:"master" "https://gitlab.com/tezos/tezos"
   in
@@ -99,10 +98,19 @@ let pipeline ocluster _filter =
     | None -> Lib.Builder.make_docker
     | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster
   in
-  Stages.v
-    (Merge_request { from_branch = "dev"; to_branch = "master" })
-    (repo_tezos |> Current.map Git.Commit.id)
-  |> Stages.pipeline ~builder
+  let task =
+    Pipeline.v
+      (Merge_request { from_branch = "dev"; to_branch = "master" })
+      (repo_tezos |> Current.map Git.Commit.id)
+    |> Pipeline.pipeline ~builder
+  in
+  Current.all
+    [
+      task.current;
+      Website.Index.update_state index
+        ~id:(Current.return "branch:master")
+        task.subtasks_status;
+    ]
 
 let main current_config mode (`Ocluster_cap cap) (`Filter filter) =
   let ocluster =
@@ -116,12 +124,13 @@ let main current_config mode (`Ocluster_cap cap) (`Filter filter) =
         Current_ocluster.v connection)
       cap
   in
+  let index = Website.Index.make () in
   let engine =
     Current.Engine.create ~config:current_config (fun () ->
-        pipeline ocluster filter)
+        pipeline ~index ocluster filter)
   in
   let site =
-    let routes = Current_web.routes engine in
+    let routes = Website.Index.routes index @ Current_web.routes engine in
     Current_web.Site.(v ~has_role:allow_all) ~name:program_name routes
   in
   Logging.run
