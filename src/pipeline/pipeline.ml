@@ -112,37 +112,22 @@ let stages =
       ] );
   ]
 
-let pipeline_stage ~stage_name ~builder ~analysis ~source stage =
+let pipeline_stage ~stage_name ~gate ~builder ~analysis ~source stage =
   let jobs =
     stage
     |> List.map (fun (mode, name, task) ->
            match should_run mode source with
-           | No ->
-               Either.Left
-                 (Current.return
-                    ~label:("Skipped " ^ stage_name ^ ":" ^ name)
-                    ())
-           | _ ->
-               Printf.printf "%s\n%!" name;
-               Right (mode, name, task ~builder analysis))
-  in
-
-  let pages =
-    List.filter_map
-      (function
-        | Either.Left _ -> None | Right (mode, name, v) -> Some (mode, name, v))
-      jobs
+           | No -> Stages.Task.skip ~name "Shouldn't run in this pipeline"
+           | _ -> task ~builder analysis)
   in
 
   let current =
-    Current.with_context analysis @@ fun () ->
-    List.map
-      (function Either.Left v -> v | Right (_, _, v) -> v.Stages.Task.current)
-      jobs
+    List.map (function v -> v.Stages.Task.current) jobs
     |> Current.all
-    |> Current.collapse ~key:"stages" ~value:stage_name ~input:analysis
+    |> Current.collapse ~key:"stages" ~value:stage_name
+         ~input:(Current.all [ analysis |> Current.ignore_value; gate ])
   in
-  (current, pages)
+  (current, jobs)
 
 (* execute the pipeline *)
 let pipeline ~builder { source; commit } =
@@ -158,8 +143,8 @@ let pipeline ~builder { source; commit } =
         in
         let jobs, pages =
           let gated_builder = Lib.Builder.gate ~gate builder in
-          pipeline_stage ~stage_name ~builder:gated_builder ~source ~analysis
-            tasks
+          pipeline_stage ~stage_name ~gate ~builder:gated_builder ~source
+            ~analysis tasks
         in
         (Current.gate ~on:jobs gate, (stage_name, pages) :: rest))
       (Current.return (), [])
@@ -170,13 +155,14 @@ let pipeline ~builder { source; commit } =
     pages
     |> List.rev
     |> List.map (fun (stage_name, substages) ->
-           List.map
-             (fun (_mode, _name, task) -> task.Stages.Task.subtasks_status)
-             substages
+           List.map (fun task -> task.Stages.Task.subtasks_status) substages
            |> Current.list_seq
-           |> Current.map (Stages.Task.group ~name:stage_name))
+           |> Current.map (Stages.Task.group ~name:stage_name)
+           |> Current.collapse ~key:"stages_state" ~value:stage_name
+                ~input:analysis)
     |> Current.list_seq
     |> Current.map (Stages.Task.group ~name:"pipeline")
+    |> Current.collapse ~key:"stages_state_root" ~value:"root" ~input:analysis
   in
 
   Stages.Task.v (Current.ignore_value current) state

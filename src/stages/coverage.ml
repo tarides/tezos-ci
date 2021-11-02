@@ -40,4 +40,4 @@ let _job ~build (analysis : Tezos_repository.t Current.t) =
   |> Current.all
 
 let test_coverage ~builder:_ _ =
-  Task.empty ~name:"integration:test_coverage"
+  Task.skip ~name:"integration:test_coverage" "Not implemented"

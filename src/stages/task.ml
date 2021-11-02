@@ -1,19 +1,24 @@
 type 'a status =
   ( 'a,
-    [ `Active of [ `Running | `Ready ] | `Msg of string | `Cancelled | `Blocked ]
-  )
+    [ `Active of [ `Running | `Ready ]
+    | `Msg of string
+    | `Cancelled
+    | `Blocked
+    | `Skipped of string ] )
   result
 
 let status_of_state_and_metadata state metadata =
   match (state, metadata) with
   | Ok v, _ -> Ok v
   | (Error (`Active _) as e), _ -> e
+  | (Error (`Skipped _) as e), _ -> e
   | Error _, Some { Current.Metadata.job_id = None; _ } -> Error `Blocked
   | Error _, None -> Error `Blocked
   | Error (`Msg "Cancelled"), _ -> Error `Cancelled
   | (Error (`Msg _) as e), _ -> e
 
 let to_int = function
+  | Error (`Skipped _) -> 0
   | Ok _ -> 1
   | Error `Blocked -> 2
   | Error (`Active `Ready) -> 3
@@ -24,7 +29,7 @@ let to_int = function
 let status_of_list =
   List.fold_left
     (fun v new_v -> if to_int new_v > to_int v then new_v else v)
-    (Ok ())
+    (Error (`Skipped "no task to do"))
 
 type subtask_value =
   | Item of (unit status * Current.Metadata.t option)
@@ -95,8 +100,9 @@ let all ~name tasks =
   in
   v current status
 
-let empty ~name =
+let skip ~name reason =
   {
     current = Current.return ();
-    subtasks_status = Current.return { name; value = Stage [] };
+    subtasks_status =
+      Current.return { name; value = Item (Error (`Skipped reason), None) };
   }

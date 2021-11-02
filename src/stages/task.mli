@@ -1,7 +1,10 @@
 type 'a status =
   ( 'a,
-    [ `Active of [ `Running | `Ready ] | `Msg of string | `Cancelled | `Blocked ]
-  )
+    [ `Active of [ `Running | `Ready ]
+    | `Msg of string
+    | `Cancelled
+    | `Blocked
+    | `Skipped of string ] )
   result
 
 type subtask_value =
@@ -33,4 +36,4 @@ val list_iter :
   t
 
 val all : name:string Current.t -> t list -> t
-val empty : name:string -> t
+val skip : name:string -> string -> t

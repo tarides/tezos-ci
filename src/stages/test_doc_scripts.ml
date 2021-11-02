@@ -1,2 +1,2 @@
-
-let all ~builder:_ _ = Task.empty ~name:"test_doc_scripts:build_all"
+let all ~builder:_ _ =
+  Task.skip ~name:"test_doc_scripts:build_all" "not implemented"

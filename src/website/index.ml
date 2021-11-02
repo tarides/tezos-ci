@@ -17,9 +17,10 @@ let emoji_of_status =
   | Ok _ -> span ~a:[ a_title "OK" ] [ txt "✔️ " ]
   | Error (`Active `Ready) -> span ~a:[ a_title "Ready" ] [ txt "🟡 " ]
   | Error (`Active `Running) -> span ~a:[ a_title "Running" ] [ txt "🟠 " ]
-  | Error `Blocked -> span ~a:[ a_title "Blocked" ] [ txt "⚪ " ]
+  | Error `Blocked -> span ~a:[ a_title "Blocked" ] [ txt "🔘 " ]
   | Error `Cancelled -> span ~a:[ a_title "Cancelled" ] [ txt "🛑 " ]
-  | Error (`Msg msg) -> span ~a:[ a_title msg ] [ txt "❌ " ]
+  | Error (`Msg msg) -> span ~a:[ a_title ("Error: " ^ msg) ] [ txt "❌ " ]
+  | Error (`Skipped msg) -> span ~a:[ a_title ("Skipped: " ^ msg) ] [ txt "⚪ " ]
 
 let list_pipelines ~state =
   let open Tyxml_html in
@@ -69,12 +70,11 @@ let rec get_job_tree (stage : Stages.Task.subtask_node) =
   let open Tyxml_html in
   match stage.value with
   | Item (_, Some { Current.Metadata.job_id = Some job_id; _ }) ->
-      Current_web.
-        [
-          emoji;
-          txt stage.name;
-          a ~a:[ a_href ("/job/" ^ job_id) ] [ txt "=> job" ];
-        ]
+      [
+        emoji;
+        txt stage.name;
+        a ~a:[ a_href ("/job/" ^ job_id) ] [ txt "=> job" ];
+      ]
   | Item _ -> [ emoji; txt stage.name ]
   | Stage rest ->
       [

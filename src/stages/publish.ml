@@ -1,8 +1,8 @@
 let build_release ~builder:_ _ =
-  Task.empty ~name:"build_release"
+  Task.skip ~name:"build_release" "not implemented"
 
 let publish_release ~builder:_ _ =
-  Task.empty ~name:"publish_release"
+  Task.skip ~name:"publish_release" "not implemented"
 
 let documentation ~builder:_ _ =
-  Task.empty ~name:"documentation"
+  Task.skip ~name:"documentation" "not implemented"
