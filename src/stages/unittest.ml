@@ -1,4 +1,5 @@
 open Analysis
+open Lib
 
 let template ?(extra_script = []) ~targets analysis =
   let build = Build.v analysis in
@@ -13,7 +14,6 @@ let template ?(extra_script = []) ~targets analysis =
          workdir "/home/tezos/src";
          copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
          copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
-         run "find . -maxdepth 3";
          run ". ./scripts/version.sh";
          (* hmmmmm *)
          env "ARCH" "x86_64";

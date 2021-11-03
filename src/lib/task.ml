@@ -76,7 +76,7 @@ let single ~name current =
   in
   { current = maybe_catch current; subtasks_status }
 
-type maker = builder:Lib.Builder.t -> Analysis.Tezos_repository.t Current.t -> t
+type maker = builder:Builder.t -> Analysis.Tezos_repository.t Current.t -> t
 
 let list_iter (type a) ~collapse_key
     (module S : Current_term.S.ORDERED with type t = a) fn values =

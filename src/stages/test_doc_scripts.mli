@@ -1,1 +1,1 @@
-val all : Task.maker
+val all : Lib.Task.maker

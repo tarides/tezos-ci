@@ -1,5 +1,6 @@
 (* Test opam install for each package in the tezos repository *)
 open Analysis
+open Lib
 
 let cache =
   [

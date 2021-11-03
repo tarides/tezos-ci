@@ -7,4 +7,4 @@ type source =
 type t
 
 val v : source -> Current_git.Commit_id.t Current.t -> t
-val pipeline : builder:Lib.Builder.t -> t -> Stages.Task.t
+val pipeline : builder:Lib.Builder.t -> t -> Lib.Task.t

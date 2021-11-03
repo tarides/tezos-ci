@@ -90,8 +90,12 @@ let _maybe_build ~filter ~label v =
     Current.active `Ready
 
 let pipeline ~index ocluster _filter =
-  let repo_tezos =
+  let repo_tezos_master =
     Git.clone ~schedule:monthly ~gref:"master" "https://gitlab.com/tezos/tezos"
+  in
+  let repo_tezos_mr_3765 =
+    Git.clone ~schedule:monthly ~gref:"francois@node-default-allocation-policy"
+      "https://gitlab.com/nomadic-labs/tezos"
   in
   let builder =
     match ocluster with
@@ -100,16 +104,28 @@ let pipeline ~index ocluster _filter =
   in
   let task =
     Pipeline.v
-      (Merge_request { from_branch = "dev"; to_branch = "master" })
-      (repo_tezos |> Current.map Git.Commit.id)
+      (Merge_request
+         {
+           from_branch = "francois@node-default-allocation-policy";
+           to_branch = "master";
+         })
+      (repo_tezos_mr_3765 |> Current.map Git.Commit.id)
+    |> Pipeline.pipeline ~builder
+  in
+  let task2 =
+    Pipeline.v (Branch "master") (repo_tezos_master |> Current.map Git.Commit.id)
     |> Pipeline.pipeline ~builder
   in
   Current.all
     [
       task.current;
       Website.Index.update_state index
-        ~id:(Current.return "branch:master")
+        ~id:(Current.return "merge_request:3765")
         task.subtasks_status;
+      task2.current;
+      Website.Index.update_state index
+        ~id:(Current.return "branch:master")
+        task2.subtasks_status;
     ]
 
 let main current_config mode (`Ocluster_cap cap) (`Filter filter) =

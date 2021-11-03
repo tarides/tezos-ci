@@ -17,7 +17,6 @@ type mode =
   | Opam_packaging
   | Development_coverage
   | Development_arm64
-  | Extended_test_pipeline
   | Commit_tag_is_version
   | Always
 
@@ -60,8 +59,6 @@ let should_run mode source =
   | Development_arm64, Schedule _ -> Yes
   | Development_arm64, v when branch_or_mr_source_branch_match "arm64" v -> Yes
   | Development_arm64, _ -> No
-  | Extended_test_pipeline, Schedule _ -> Yes
-  | Extended_test_pipeline, _ -> No
   | Opam_packaging, Branch "master"
   | Opam_packaging, Merge_request _
   | Opam_packaging, Schedule _ ->
@@ -89,6 +86,7 @@ let stages =
     ( "test",
       [
         (Development, "integration", Integration.all);
+        (Development, "integration:tezt", Tezt.job);
         (Always, "misc", Lints.misc_checks);
         (Always, "check_precommit_hook", Lints.check_precommit_hook);
         (Development, "unit tests", Unittest.all);
@@ -117,12 +115,12 @@ let pipeline_stage ~stage_name ~gate ~builder ~analysis ~source stage =
     stage
     |> List.map (fun (mode, name, task) ->
            match should_run mode source with
-           | No -> Stages.Task.skip ~name "Shouldn't run in this pipeline"
+           | No -> Lib.Task.skip ~name "Shouldn't run in this pipeline"
            | _ -> task ~builder analysis)
   in
 
   let current =
-    List.map (function v -> v.Stages.Task.current) jobs
+    List.map (function v -> v.Lib.Task.current) jobs
     |> Current.all
     |> Current.collapse ~key:"stages" ~value:stage_name
          ~input:(Current.all [ analysis |> Current.ignore_value; gate ])
@@ -155,14 +153,14 @@ let pipeline ~builder { source; commit } =
     pages
     |> List.rev
     |> List.map (fun (stage_name, substages) ->
-           List.map (fun task -> task.Stages.Task.subtasks_status) substages
+           List.map (fun task -> task.Lib.Task.subtasks_status) substages
            |> Current.list_seq
-           |> Current.map (Stages.Task.group ~name:stage_name)
+           |> Current.map (Lib.Task.group ~name:stage_name)
            |> Current.collapse ~key:"stages_state" ~value:stage_name
                 ~input:analysis)
     |> Current.list_seq
-    |> Current.map (Stages.Task.group ~name:"pipeline")
+    |> Current.map (Lib.Task.group ~name:"pipeline")
     |> Current.collapse ~key:"stages_state_root" ~value:"root" ~input:analysis
   in
 
-  Stages.Task.v (Current.ignore_value current) state
+  Lib.Task.v (Current.ignore_value current) state

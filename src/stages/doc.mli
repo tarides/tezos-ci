@@ -1,3 +1,3 @@
-val build : Task.maker
-val build_all : Task.maker
-val linkcheck : Task.maker
+val build : Lib.Task.maker
+val build_all : Lib.Task.maker
+val linkcheck : Lib.Task.maker

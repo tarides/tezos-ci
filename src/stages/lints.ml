@@ -1,3 +1,5 @@
+open Lib
+
 let sanity_ci ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
   let open Current.Syntax in
   let spec =
@@ -15,7 +17,6 @@ let sanity_ci ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
           workdir "/home/tezos";
           copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
           copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
-          run "find . -maxdepth 1";
           run ". ./scripts/version.sh";
           run ". /home/tezos/.venv/bin/activate";
           run "opam exec -- src/tooling/lint.sh --check-gitlab-ci-yml";
@@ -59,7 +60,6 @@ let misc_checks ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
           user ~uid:100 ~gid:100;
           workdir "/home/tezos/src";
           copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
-          run "find . -maxdepth 3";
           run ". ./scripts/version.sh";
           env "VIRTUAL_ENV" "/home/tezos/.venv";
           env "PATH" "$VIRTUAL_ENV/bin:$PATH";
@@ -100,7 +100,6 @@ let check_precommit_hook ~builder
           user ~uid:100 ~gid:100;
           workdir "/home/tezos";
           copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
-          run "find . -maxdepth 3";
           run ". ./scripts/version.sh";
           run ". /home/tezos/.venv/bin/activate";
           (* checks that all deps of opam packages are already installed *)

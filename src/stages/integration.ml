@@ -1,4 +1,5 @@
 open Analysis
+open Lib
 
 let template ~script analysis =
   let build = Build.v analysis in
@@ -13,7 +14,6 @@ let template ~script analysis =
         workdir "/home/tezos/src";
         copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
         copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
-        run "find . -maxdepth 3";
         run ". ./scripts/version.sh";
         env "VIRTUAL_ENV" "/home/tezos/.venv";
         env "PATH" "$VIRTUAL_ENV/bin:$PATH";

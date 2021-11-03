@@ -1,4 +1,5 @@
 open Analysis
+open Lib
 
 let build ~builder (analysis : Tezos_repository.t Current.t) =
   let open Current.Syntax in

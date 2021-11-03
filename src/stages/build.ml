@@ -1,4 +1,5 @@
 open Analysis
+open Lib
 
 let cache =
   [ Obuilder_spec.Cache.v ~target:"/home/tezos/.cache/dune" "tezos-dune-build" ]

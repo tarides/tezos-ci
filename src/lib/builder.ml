@@ -77,7 +77,7 @@ let pool_to_string = function
   | X86_64 -> "linux-x86_64"
 
 (* TODO: default to host's pool *)
-let build ?(pool = X86_64) ~label t spec =
+let build ?(pool = Arm64) ~label t spec =
   let spec =
     let open Current.Syntax in
     let+ () = Current.all t.gates and+ spec = spec in

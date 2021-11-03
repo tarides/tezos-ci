@@ -1,4 +1,5 @@
 open Analysis
+open Lib
 
 type target = Unit | Python_alpha | Tezt_coverage
 
@@ -19,7 +20,6 @@ let template ~target analysis =
         workdir "/home/tezos";
         copy [ "/" ] ~dst:"./";
         copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
-        run "find . -maxdepth 3";
         run ". ./scripts/version.sh";
         run ". /home/tezos/.venv/bin/activate";
         env "COVERAGE_OPTION" "--instrument-with bisect_ppx";

@@ -1,3 +1,3 @@
-val documentation : Task.maker
-val publish_release : Task.maker
-val build_release : Task.maker
+val documentation : Lib.Task.maker
+val publish_release : Lib.Task.maker
+val build_release : Lib.Task.maker

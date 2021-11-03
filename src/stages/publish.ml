@@ -1,3 +1,5 @@
+open Lib
+
 let build_release ~builder:_ _ =
   Task.skip ~name:"build_release" "not implemented"
 
