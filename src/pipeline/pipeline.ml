@@ -87,6 +87,9 @@ let stages =
       [
         (Development, "integration", Integration.all);
         (Development, "integration:tezt", Tezt.job);
+        ( Development,
+          "test-liquidity-baking-scripts",
+          Test_liquidity_baking_scripts.test );
         (Always, "misc", Lints.misc_checks);
         (Always, "check_precommit_hook", Lints.check_precommit_hook);
         (Development, "unit tests", Unittest.all);
