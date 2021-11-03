@@ -72,8 +72,7 @@ let job ~(analysis : Tezos_repository.t Current.t) ~builder
           let+ protocol = protocol and+ name = name in
           "integration:test_" ^ protocol.id ^ "_" ^ name
         in
-        Lib.Builder.build builder ~label:"integration:test" spec
-        |> Task.single_c ~name)
+        Lib.Builder.build builder ~name ~label:"integration:test" spec)
       slow_tests
   in
   let batch_test =
@@ -91,8 +90,7 @@ let job ~(analysis : Tezos_repository.t Current.t) ~builder
          let+ protocol = protocol in
          protocol.id ^ "_batch"
        in
-       Lib.Builder.build builder ~label:"integration:batch" batch_test
-       |> Task.single_c ~name);
+       Lib.Builder.build builder ~name ~label:"integration:batch" batch_test);
     ]
 
 let all ~builder (analysis : Tezos_repository.t Current.t) =
@@ -109,6 +107,5 @@ let all ~builder (analysis : Tezos_repository.t Current.t) =
   let examples =
     let examples = Current.map examples analysis in
     Lib.Builder.build ~label:"integration:examples" builder examples
-    |> Task.single ~name:"integration:examples"
   in
   Task.all ~name:(Current.return "intgeration") [ protocol_tests; examples ]

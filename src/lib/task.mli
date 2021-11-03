@@ -24,8 +24,6 @@ val v : unit Current.t -> subtask_node Current.t -> t
 val single : name:string -> unit Current.t -> t
 val single_c : name:string Current.t -> unit Current.t -> t
 
-type maker = builder:Builder.t -> Analysis.Tezos_repository.t Current.t -> t
-
 val status : subtask_node -> unit status
 
 val list_iter :

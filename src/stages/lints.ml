@@ -23,7 +23,6 @@ let sanity_ci ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
         ])
   in
   Lib.Builder.build ~label:"lints:sanity_ci" builder spec
-  |> Task.single ~name:"lints:sanity_ci"
 
 let docker_hadolint ~builder (analysis : Analysis.Tezos_repository.t Current.t)
     =
@@ -43,7 +42,6 @@ let docker_hadolint ~builder (analysis : Analysis.Tezos_repository.t Current.t)
         ])
   in
   Lib.Builder.build ~label:"lints:docker_hadolint" builder spec
-  |> Task.single ~name:"lints:docker_hadolint"
 
 let misc_checks ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
   let open Current.Syntax in
@@ -82,7 +80,6 @@ let misc_checks ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
         ])
   in
   Lib.Builder.build ~label:"lints:misc_checks" builder spec
-  |> Task.single ~name:"lints:misc_checks"
 
 let check_precommit_hook ~builder
     (analysis : Analysis.Tezos_repository.t Current.t) =
@@ -110,4 +107,3 @@ let check_precommit_hook ~builder
         ])
   in
   Lib.Builder.build ~label:"lints:check_precommit_hook" builder spec
-  |> Task.single ~name:"lints:check_precommit_hook"

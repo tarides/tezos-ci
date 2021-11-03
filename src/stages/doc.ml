@@ -19,7 +19,6 @@ let build ~builder (analysis : Tezos_repository.t Current.t) =
         ])
   in
   Lib.Builder.build ~label:"documentation:build" builder spec
-  |> Task.single ~name:"documentation:build"
 
 let build_all ~builder:_ _ = Task.skip ~name:"documentation:build_all" "not implemented"
 let linkcheck ~builder:_ _ = Task.skip ~name:"documentation:linkcheck" "not implemented"

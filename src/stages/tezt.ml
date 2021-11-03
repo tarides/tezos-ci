@@ -34,6 +34,5 @@ let job ~builder (analysis : Tezos_repository.t Current.t) =
   |> List.map (fun n ->
          let label = Fmt.str "integration:tezt:%d" n in
          Lib.Builder.build builder ~label
-           (Current.map (template ~tezt_job:n) analysis)
-         |> Task.single ~name:label)
+           (Current.map (template ~tezt_job:n) analysis))
   |> Task.all ~name:(Current.return "integration:tezt")

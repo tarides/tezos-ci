@@ -8,4 +8,9 @@ type pool = Arm64 | X86_64
 val gate : gate:unit Current.t -> t -> t
 
 val build :
-  ?pool:pool -> label:string -> t -> Obuilder_spec.t Current.t -> unit Current.t
+  ?pool:pool ->
+  ?name:string Current.t ->
+  label:string ->
+  t ->
+  Obuilder_spec.t Current.t ->
+  Task.t

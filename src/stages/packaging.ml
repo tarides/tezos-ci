@@ -51,5 +51,5 @@ let all ~builder (analysis : Tezos_repository.t Current.t) =
         let+ package = package in
         "packaging:" ^ package
       in
-      Lib.Builder.build builder ~label:"packaging" spec |> Task.single_c ~name)
+      Lib.Builder.build builder ~name ~label:"packaging" spec)
     all_packages

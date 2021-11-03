@@ -67,5 +67,5 @@ let all ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
            let+ analysis = analysis in
            template ?extra_script ~targets analysis
          in
-         Lib.Builder.build ~label:name builder spec |> Task.single ~name)
+         Lib.Builder.build ~label:name builder spec)
        targets)

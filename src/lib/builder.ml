@@ -77,7 +77,7 @@ let pool_to_string = function
   | X86_64 -> "linux-x86_64"
 
 (* TODO: default to host's pool *)
-let build ?(pool = Arm64) ~label t spec =
+let build ?(pool = X86_64) ~label t spec =
   let spec =
     let open Current.Syntax in
     let+ () = Current.all t.gates and+ spec = spec in
@@ -91,3 +91,9 @@ let build ?(pool = Arm64) ~label t spec =
   | Ocluster_obuilder ocluster ->
       Ocluster_builder.obuilder_build ~pool:(pool_to_string pool) ~ocluster
         ~label spec
+
+let build ?pool ?name ~label t spec =
+  let current = build ?pool ~label t spec in
+  match name with
+  | None -> Task.single ~name:label current
+  | Some name -> Task.single_c ~name current
