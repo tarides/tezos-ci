@@ -64,12 +64,77 @@ let show_pipeline ~state name =
          stages);
   ]
 
+let duration_pp ppf t =
+  let hour = 3600_000_000_000L in
+  let day = Int64.mul 24L hour in
+  let year = Int64.mul 8766L hour in
+  let open Duration in
+  let min = to_min t in
+  if min > 0 then
+    let y = to_year t in
+    let left = Int64.rem t year in
+    let d = to_day left in
+    let left = Int64.rem left day in
+    if y > 0 then Format.fprintf ppf "%da%dd" y d
+    else
+      let h = to_hour left in
+      let left = Int64.rem left hour in
+      if d > 0 then Format.fprintf ppf "%dd%02dh" d h
+      else
+        let min = to_min left in
+        let left = Int64.sub t (of_min min) in
+        let sec = to_sec left in
+        if h > 0 then Format.fprintf ppf "%dh%02dm" h min
+        else (* if m > 0 then *)
+          Format.fprintf ppf "%dm%02ds" min sec
+  else
+    (* below one minute *)
+    let fields t =
+      let sec = to_sec_64 t in
+      let left = Int64.sub t (of_sec_64 sec) in
+      let ms = to_ms_64 left in
+      let left = Int64.sub left (of_ms_64 ms) in
+      let us = to_us_64 left in
+      let ns = Int64.(sub left (of_us_64 us)) in
+      (sec, ms, us, ns)
+    in
+    let s, ms, us, ns = fields t in
+    if s > 0L then Format.fprintf ppf "%Lds" s
+    else if ms > 0L then Format.fprintf ppf "%Ldms" ms
+    else (* if us > 0 then *)
+      Format.fprintf ppf "%Ld.%03Ldus" us ns
+
+let get_job_run_time_info job_id =
+  match Current.Job.lookup_running job_id with
+  | Some job -> (
+      match Lwt.state (Current.Job.start_time job) with
+      | Lwt.Sleep -> ""
+      | Lwt.Return t ->
+          Fmt.str " (running for %a)" duration_pp
+            (Duration.of_f (Unix.gettimeofday () -. t))
+      | Lwt.Fail _ -> "")
+  | None -> (
+      let results = Current_cache.Db.query ~job_prefix:job_id () in
+      match results with
+      | [ { Current_cache.Db.ready; running; finished; _ } ] -> (
+          match running with
+          | None ->
+              Fmt.str " (%a queued)" duration_pp
+                (Duration.of_f (finished -. ready))
+          | Some running ->
+              Fmt.str " (%a)" duration_pp (Duration.of_f (finished -. running)))
+      | _ -> "")
+
 let rec get_job_tree ~uri_base (stage : Task.subtask_node) =
   let emoji = emoji_of_status (Task.status stage) in
   let open Tyxml_html in
   match stage.value with
   | Item (_, Some { Current.Metadata.job_id = Some job_id; _ }) ->
-      [ emoji; a ~a:[ a_href (uri_base ^ "/" ^ job_id) ] [ txt stage.name ] ]
+      [
+        emoji;
+        a ~a:[ a_href (uri_base ^ "/" ^ job_id) ] [ txt stage.name ];
+        i [ txt (get_job_run_time_info job_id) ];
+      ]
   | Item _ -> [ emoji; txt stage.name ]
   | Stage rest ->
       [
