@@ -28,7 +28,7 @@ let to_int = function
 
 let status_of_list =
   List.fold_left
-    (fun v new_v -> if to_int new_v > to_int v then new_v else v)
+    (fun v new_v -> if to_int new_v >= to_int v then new_v else v)
     (Error (`Skipped "no task to do"))
 
 type subtask_value =
