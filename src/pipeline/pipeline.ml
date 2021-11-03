@@ -119,9 +119,11 @@ let pipeline_stage ~stage_name ~gate ~builder ~analysis ~source stage =
     |> List.map (fun (mode, name, task) ->
            match should_run mode source with
            | No -> Lib.Task.skip ~name "Shouldn't run in this pipeline"
-           | _ -> task ~builder analysis)
+           | Manual ->
+               let builder = Lib.Builder.manual builder in
+               task ~builder analysis
+           | Yes -> task ~builder analysis)
   in
-
   let current =
     List.map (function v -> v.Lib.Task.current) jobs
     |> Current.all

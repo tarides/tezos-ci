@@ -1,6 +1,6 @@
 [submodule "ocluster"]
 	path = ocluster
-	url = https://github.com/ocurrent/ocluster
+	url = https://github.com/TheLortex/ocluster
 [submodule "ocurrent"]
 	path = ocurrent
-	url = https://github.com/ocurrent/ocurrent.git
+	url = https://github.com/TheLortex/ocurrent.git

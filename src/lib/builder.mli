@@ -7,6 +7,8 @@ type pool = Arm64 | X86_64
 
 val gate : gate:unit Current.t -> t -> t
 
+val manual : t -> t
+
 val build :
   ?pool:pool ->
   ?name:string Current.t ->
