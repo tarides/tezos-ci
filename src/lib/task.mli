@@ -8,22 +8,29 @@ type 'a status =
   result
 
 type subtask_value =
-  | Item of (unit status * Current.Metadata.t option)
+  | Item of
+      (Current_ocluster.Artifacts.t option status * Current.Metadata.t option)
   | Stage of subtask_node list
 
 and subtask_node = { name : string; value : subtask_value }
 
 val item :
-  name:string -> ?metadata:Current.Metadata.t -> unit status -> subtask_node
+  name:string ->
+  ?metadata:Current.Metadata.t ->
+  Current_ocluster.Artifacts.t option status ->
+  subtask_node
 
 val group : name:string -> subtask_node list -> subtask_node
 
 type t = { current : unit Current.t; subtasks_status : subtask_node Current.t }
 
 val v : unit Current.t -> subtask_node Current.t -> t
-val single : name:string -> unit Current.t -> t
-val single_c : name:string Current.t -> unit Current.t -> t
-val status : subtask_node -> unit status
+val single : name:string -> Current_ocluster.Artifacts.t option Current.t -> t
+
+val single_c :
+  name:string Current.t -> Current_ocluster.Artifacts.t option Current.t -> t
+
+val status : subtask_node -> Current_ocluster.Artifacts.t option status
 
 val list_iter :
   collapse_key:string ->

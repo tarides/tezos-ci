@@ -32,7 +32,7 @@ let status_of_list =
     (Error (`Skipped "no task to do"))
 
 type subtask_value =
-  | Item of (unit status * Current.Metadata.t option)
+  | Item of (Current_ocluster.Artifacts.t option status * Current.Metadata.t option)
   | Stage of subtask_node list
 
 and subtask_node = { name : string; value : subtask_value }

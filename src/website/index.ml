@@ -125,15 +125,43 @@ let get_job_run_time_info job_id =
               Fmt.str " (%a)" duration_pp (Duration.of_f (finished -. running)))
       | _ -> "")
 
+let maybe_artifacts =
+  let open Tyxml_html in
+  function
+  | Ok (Some artifacts) ->
+      span
+        [
+          txt "  ";
+          a
+            ~a:
+              [
+                a_href ("/artifacts/" ^ Current_ocluster.Artifacts.id artifacts);
+              ]
+            [
+              txt "⤵️ artifacts ";
+              i
+                [
+                  txt
+                    (Fmt.str "(%.2fMB)"
+                       ((Current_ocluster.Artifacts.size artifacts
+                        |> Float.of_int)
+                       /. 1024.
+                       /. 1024.));
+                ];
+            ];
+        ]
+  | _ -> txt ""
+
 let rec get_job_tree ~uri_base (stage : Task.subtask_node) =
   let emoji = emoji_of_status (Task.status stage) in
   let open Tyxml_html in
   match stage.value with
-  | Item (_, Some { Current.Metadata.job_id = Some job_id; _ }) ->
+  | Item (artifacts, Some { Current.Metadata.job_id = Some job_id; _ }) ->
       [
         emoji;
         a ~a:[ a_href (uri_base ^ "/" ^ job_id) ] [ txt stage.name ];
         i [ txt (get_job_run_time_info job_id) ];
+        maybe_artifacts artifacts;
       ]
   | Item _ -> [ emoji; txt stage.name ]
   | Stage rest ->

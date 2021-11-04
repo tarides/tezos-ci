@@ -1,4 +1,3 @@
-module Artifacts = Artifacts
 module Builder = Builder
 
 module Task = struct

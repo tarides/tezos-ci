@@ -108,7 +108,7 @@ let build ?context ?(pool = X86_64) ~label t spec =
   match t.mode with
   | Host_docker ->
       let+ _ = Docker_builder.build ?context ~level ~label spec in
-      ()
+      None
   | Ocluster_docker ocluster ->
       Ocluster_builder.docker_build ?context ~level ~pool:(pool_to_string pool)
         ~ocluster ~label spec
