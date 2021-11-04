@@ -53,9 +53,9 @@ let linkcheck ~builder (analysis : Tezos_repository.t Current.t) =
           workdir "/home/tezos";
           copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
           run "opam exec -- make -C docs all";
-          run "make -C docs redirectcheck";
-          run "make -C docs linkcheck";
-          run "make -C docs sanitycheck";
+          run "opam exec -- make -C docs redirectcheck";
+          run "opam exec -- make -C docs linkcheck";
+          run "opam exec -- make -C docs sanitycheck";
         ])
   in
   Lib.Builder.build ~label:"documentation:linkcheck" builder spec

@@ -14,30 +14,29 @@ let template ~target analysis =
     Variables.docker_image_runtime_build_test_dependencies analysis.version
   in
   Obuilder_spec.(
-    stage ~from ~child_builds:[ ("build", build) ]
+    stage ~from
+      ~child_builds:[ ("build", build); ("src", Lib.Fetch.spec analysis) ]
       [
         user ~uid:100 ~gid:100;
-        workdir "/home/tezos";
-        copy [ "/" ] ~dst:"./";
+        workdir "/tezos/";
+        copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
         copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
         run ". ./scripts/version.sh";
-        run ". /home/tezos/.venv/bin/activate";
+        env "VIRTUAL_ENV" "/home/tezos/.venv";
+        env "PATH" "$VIRTUAL_ENV/bin:$PATH";
         env "COVERAGE_OPTION" "--instrument-with bisect_ppx";
-        env "BISECT_FILE" "/home/tezos/_coverage_output/";
+        env "BISECT_FILE" "/tezos/_coverage_output/";
         run "opam exec -- make %s || true" (target_to_string target);
         run "opam exec -- make coverage-report";
         run "opam exec -- make coverage-report-summary";
         run "tail -n 100 _coverage_report/*";
       ])
 
-let _job ~build (analysis : Tezos_repository.t Current.t) =
-  [ Unit ]
+let test_coverage ~builder (analysis : Tezos_repository.t Current.t) =
+  [ Unit; Python_alpha; Tezt_coverage ]
   |> List.map (fun target ->
          let label =
            Fmt.str "integration:test_coverage:%s" (target_to_string target)
          in
-         build ~label (Current.map (template ~target) analysis))
-  |> Current.all
-
-let test_coverage ~builder:_ _ =
-  Task.skip ~name:"integration:test_coverage" "Not implemented"
+         Builder.build builder ~label (Current.map (template ~target) analysis))
+  |> Task.all ~name:(Current.return "integration:test_coverage")

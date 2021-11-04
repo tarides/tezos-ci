@@ -50,11 +50,12 @@ type t = { current : unit Current.t; subtasks_status : subtask_node Current.t }
 let v current subtasks_status = { current; subtasks_status }
 
 (* TODO: cmdline *)
-let skip_failures = true
+let skip_failures = false
 
 let maybe_catch current =
   if skip_failures then
-    Current.catch ~hidden:true current |> Current.map (fun _ -> ())
+    Current.catch ~hidden:true current
+    |> Current.map (function Ok v -> v | _ -> ())
   else current
 
 let single_c ~name current =
@@ -65,7 +66,7 @@ let single_c ~name current =
     and+ name = name in
     status_of_state_and_metadata state metadata |> item ~name ?metadata
   in
-  { current = maybe_catch current; subtasks_status }
+  { current = maybe_catch (Current.ignore_value current); subtasks_status }
 
 let single ~name current =
   let open Current.Syntax in
@@ -74,7 +75,7 @@ let single ~name current =
     and+ metadata = Current.Analysis.metadata current in
     status_of_state_and_metadata state metadata |> item ~name ?metadata
   in
-  { current = maybe_catch current; subtasks_status }
+  { current = maybe_catch (Current.ignore_value current); subtasks_status }
 
 let list_iter (type a) ~collapse_key
     (module S : Current_term.S.ORDERED with type t = a) fn values =
@@ -111,4 +112,10 @@ let skip ~name reason =
     current = Current.return ();
     subtasks_status =
       Current.return { name; value = Item (Error (`Skipped reason), None) };
+  }
+
+let allow_failures { current; subtasks_status } =
+  {
+    current = Current.state ~hidden:true current |> Current.map (fun _ -> ());
+    subtasks_status;
   }

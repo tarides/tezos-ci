@@ -55,10 +55,10 @@ let should_run mode source =
       Yes
   | Development_documentation, _ -> No
   | Development_coverage, Schedule _ -> Yes
-  | Development_coverage, _ -> No
+  | Development_coverage, _ -> Manual
   | Development_arm64, Schedule _ -> Yes
   | Development_arm64, v when branch_or_mr_source_branch_match "arm64" v -> Yes
-  | Development_arm64, _ -> No
+  | Development_arm64, _ -> Manual
   | Opam_packaging, Branch "master"
   | Opam_packaging, Merge_request _
   | Opam_packaging, Schedule _ ->
@@ -72,6 +72,7 @@ let should_run mode source =
 let stages =
   let open Stages in
   [
+    ("base_images", [ (Development, "build", Base_image.build) ]);
     ( "build",
       [
         (Development, "x86_64", Build.x86_64);
@@ -121,7 +122,7 @@ let pipeline_stage ~stage_name ~gate ~builder ~analysis ~source stage =
            | No -> Lib.Task.skip ~name "Shouldn't run in this pipeline"
            | Manual ->
                let builder = Lib.Builder.manual builder in
-               task ~builder analysis
+               task ~builder analysis |> Lib.Task.allow_failures
            | Yes -> task ~builder analysis)
   in
   let current =

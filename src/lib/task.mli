@@ -23,7 +23,6 @@ type t = { current : unit Current.t; subtasks_status : subtask_node Current.t }
 val v : unit Current.t -> subtask_node Current.t -> t
 val single : name:string -> unit Current.t -> t
 val single_c : name:string Current.t -> unit Current.t -> t
-
 val status : subtask_node -> unit status
 
 val list_iter :
@@ -35,3 +34,4 @@ val list_iter :
 
 val all : name:string Current.t -> t list -> t
 val skip : name:string -> string -> t
+val allow_failures : t -> t
