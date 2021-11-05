@@ -43,7 +43,8 @@ module Ocluster_builder = struct
           let+ src = src in
           [ src ]
     in
-    Current_ocluster.build_obuilder ~level ocluster ~cache_hint:"tezos-ci"
+    Current_ocluster.build_obuilder ~level ocluster
+      ~cache_hint:(Random.float 1. |> string_of_float)
       ~label ~src ~pool spec
 
   let docker_build ?context ~level ~pool ~ocluster ~label spec =
@@ -67,8 +68,9 @@ module Ocluster_builder = struct
           let+ src = src in
           [ src ]
     in
-    Current_ocluster.build ~level ocluster ~cache_hint:"tezos-ci" ~options
-      ~label ~src ~pool (`Contents spec)
+    Current_ocluster.build ~level ocluster
+      ~cache_hint:(Random.float 1. |> string_of_float)
+      ~options ~label ~src ~pool (`Contents spec)
 end
 
 type mode =

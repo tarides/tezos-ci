@@ -135,20 +135,11 @@ let maybe_artifacts =
           a
             ~a:
               [
-                a_href ("/artifacts/" ^ Current_ocluster.Artifacts.id artifacts);
+                a_href
+                  (Current_ocluster.Artifacts.public_path artifacts
+                  |> Fpath.to_string);
               ]
-            [
-              txt "⤵️ artifacts ";
-              i
-                [
-                  txt
-                    (Fmt.str "(%.2fMB)"
-                       ((Current_ocluster.Artifacts.size artifacts
-                        |> Float.of_int)
-                       /. 1024.
-                       /. 1024.));
-                ];
-            ];
+            [ txt "⤵️ artifacts " ];
         ]
   | _ -> txt ""
 
@@ -279,9 +270,18 @@ let handle state wildcard_path =
       Current_web.Context.respond_ok context response
   end
 
+let handle_artifacts wildcard_path =
+  object
+    inherit Current_web.Resource.t
+
+    method! private get_raw _ _ =
+      Static.serve ~root:Current_ocluster.Artifacts.store wildcard_path
+  end
+
 let routes t =
   Routes.
     [
       (s "pipelines" /? nil) @--> handle t (Parts.of_parts "");
       (s "pipelines" /? wildcard) @--> handle t;
+      (s "artifacts" /? wildcard) @--> handle_artifacts;
     ]

@@ -1,4 +1,4 @@
 (library
  (public_name tezos-ci.website)
  (name website)
- (libraries current tezos-ci.stages routes current_web))
+ (libraries current tezos-ci.stages routes current_web magic-mime))

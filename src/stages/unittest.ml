@@ -29,12 +29,12 @@ let targets =
         "src/proto_010_PtGRANAD/lib_protocol.test_proto";
       ],
       None );
-    ( "unit:011_PtHangzH",
+    ( "unit:011_PtHangz2",
       [
-        "src/proto_011_PtHangzH/lib_benchmark/lib_benchmark_type_inference.test_proto";
-        "src/proto_011_PtHangzH/lib_benchmark.test_proto";
-        "src/proto_011_PtHangzH/lib_client.test_proto";
-        "src/proto_011_PtHangzH/lib_protocol.test_proto";
+        "src/proto_011_PtHangz2/lib_benchmark/lib_benchmark_type_inference.test_proto";
+        "src/proto_011_PtHangz2/lib_benchmark.test_proto";
+        "src/proto_011_PtHangz2/lib_client.test_proto";
+        "src/proto_011_PtHangz2/lib_protocol.test_proto";
       ],
       None );
     ( "unit:alpha",
