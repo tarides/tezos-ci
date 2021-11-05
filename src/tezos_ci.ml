@@ -67,29 +67,40 @@ end
 
 let program_name = "tezos-ci"
 
-let commit gref =
-  Git.clone ~schedule:monthly ~gref "https://gitlab.com/tezos/tezos"
+let commit hash =
+  Current_git.Commit_id.v ~repo:"https://gitlab.com/tezos/tezos" ~gref:"master"
+    ~hash
 
 (* https://gitlab.com/tezos/tezos/-/merge_requests/2970/commits *)
-let _commits =
+let commits =
   [
-    commit "master";
-    commit "638f524f5e8a0bd43271202e98d62683e0120057";
-    (* Stdlib.Compare.Z: use Z.Compare rather than Make(Z) *)
+    commit "faf7d9a7947fd796c0c9ed59097524c5452533dd";
+    commit "1ce49351fe8c9a89d89660d0df89f0446bd252e8";
+    commit "6b5b3ce62551cf2ca16e3fef8a175e25f9211319";
+    commit "d733352620da926021b1872f355fa2510c859c65";
   ]
-  |> Current.list_seq
 
-let do_build ~filter label =
-  match filter with None -> true | Some filter -> List.mem label filter
+let ppl ~index ~ocluster commit =
+  let builder =
+    match ocluster with
+    | None -> Lib.Builder.make_docker
+    | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster
+  in
+  let task =
+    Pipeline.v
+      (Merge_request { from_branch = "master"; to_branch = "master" })
+      (Current.return commit)
+    |> Pipeline.pipeline ~builder
+  in
+  Current.all
+    [
+      task.current;
+      Website.Index.update_state index
+        ~id:(Current.return ("commit:" ^ Current_git.Commit_id.hash commit))
+        task.subtasks_status;
+    ]
 
-let _maybe_build ~filter ~label v =
-  if do_build ~filter label then v ()
-  else
-    let open Current.Syntax in
-    let* () = Current.return ~label:("Build skipped: " ^ label) () in
-    Current.active `Ready
-
-let pipeline ~index ocluster _filter =
+let ppl_master ~index ~ocluster =
   let repo_tezos_master =
     Git.clone ~schedule:monthly ~gref:"master" "https://gitlab.com/tezos/tezos"
   in
@@ -111,6 +122,10 @@ let pipeline ~index ocluster _filter =
         ~id:(Current.return "branch:master")
         task.subtasks_status;
     ]
+
+let pipeline ~index ocluster _filter =
+  ppl_master ~index ~ocluster :: (commits |> List.map (ppl ~index ~ocluster))
+  |> Current.all
 
 let main current_config mode (`Ocluster_cap cap) (`Filter filter) =
   let ocluster =

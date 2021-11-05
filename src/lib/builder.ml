@@ -36,6 +36,10 @@ module Ocluster_builder = struct
       let spec_str = Fmt.to_to_string Obuilder_spec.pp spec in
       { Cluster_api.Obuilder_job.Spec.spec = `Contents spec_str }
     in
+    let cache_hint = 
+      let+ {spec = `Contents spec } = spec in
+      Digest.(string spec |> to_hex)
+    in
     let src =
       match context with
       | None -> Current.return []
@@ -43,9 +47,7 @@ module Ocluster_builder = struct
           let+ src = src in
           [ src ]
     in
-    Current_ocluster.build_obuilder ~level ocluster
-      ~cache_hint:(Random.float 1. |> string_of_float)
-      ~label ~src ~pool spec
+    Current_ocluster.build_obuilder ~level ~cache_hint ocluster ~label ~src ~pool spec
 
   let docker_build ?context ~level ~pool ~ocluster ~label spec =
     let open Current.Syntax in
@@ -61,6 +63,10 @@ module Ocluster_builder = struct
       let+ spec = spec in
       Obuilder_spec.Docker.dockerfile_of_spec ~buildkit:true spec
     in
+    let cache_hint = 
+      let+ spec = spec in
+      Digest.(string spec |> to_hex)
+    in
     let src =
       match context with
       | None -> Current.return []
@@ -69,7 +75,7 @@ module Ocluster_builder = struct
           [ src ]
     in
     Current_ocluster.build ~level ocluster
-      ~cache_hint:(Random.float 1. |> string_of_float)
+      ~cache_hint
       ~options ~label ~src ~pool (`Contents spec)
 end
 
