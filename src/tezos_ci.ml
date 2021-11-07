@@ -2,70 +2,72 @@ module Git = Current_git
 module Docker = Current_docker.Default
 module Analyse = Analyse
 module Packaging = Packaging
+module Gitlab = Current_gitlab
 
 let () = Logging.init ()
-let monthly = Current_cache.Schedule.v ~valid_for:(Duration.of_day 30) ()
+(* TODO This seems to be setup to Ocurrent a bunch of commits. *)
+(* let monthly = Current_cache.Schedule.v ~valid_for:(Duration.of_day 30) () *)
 
-module Commit_sequence = struct
-  module Key = struct
-    type t = Current_git.Commit.t list
+(* module Commit_sequence = struct *)
+(*   module Key = struct *)
+(*     type t = Current_git.Commit.t list *)
 
-    let digest v =
-      List.map Current_git.Commit.hash v
-      |> String.concat ";"
-      |> Digest.string
-      |> Digest.to_hex
-  end
+(*     let digest v = *)
+(*       List.map Current_git.Commit.hash v *)
+(*       |> String.concat ";" *)
+(*       |> Digest.string *)
+(*       |> Digest.to_hex *)
+(*   end *)
 
-  type state = {
-    mutable digest : string;
-    mutable index : int;
-    mutable max : int;
-  }
+(*   type state = { *)
+(*     mutable digest : string; *)
+(*     mutable index : int; *)
+(*     mutable max : int; *)
+(*   } *)
 
-  let empty digest = { digest; index = 0; max = 0 }
+(*   let empty digest = { digest; index = 0; max = 0 } *)
 
-  let update_to state digest max =
-    state.digest <- digest;
-    state.max <- max;
-    state.index <- 0
+(*   let update_to state digest max = *)
+(*     state.digest <- digest; *)
+(*     state.max <- max; *)
+(*     state.index <- 0 *)
 
-  let next ~job state values =
-    let digest = Key.digest values in
-    if digest <> state.digest then update_to state digest (List.length values);
-    let return_value = List.nth values state.index in
-    Current.Job.log job "Commit #%d/%d: %a" (state.index + 1) state.max
-      Git.Commit.pp return_value;
-    if state.index + 1 < state.max then state.index <- state.index + 1
-    else state.index <- 0;
-    return_value
+(*   let next ~job state values = *)
+(*     let digest = Key.digest values in *)
+(*     if digest <> state.digest then update_to state digest (List.length values); *)
+(*     let return_value = List.nth values state.index in *)
+(*     Current.Job.log job "Commit #%d/%d: %a" (state.index + 1) state.max *)
+(*       Git.Commit.pp return_value; *)
+(*     if state.index + 1 < state.max then state.index <- state.index + 1 *)
+(*     else state.index <- 0; *)
+(*     return_value *)
 
-  module Op = struct
-    let id = "commit-sequence"
+(*   module Op = struct *)
+(*     let id = "commit-sequence" *)
 
-    type t = state
+(*     type t = state *)
 
-    module Key = Key
-    module Value = Current_git.Commit
+(*     module Key = Key *)
+(*     module Value = Current_git.Commit *)
 
-    let auto_cancel = false
-    let pp f _ = Fmt.string f "commit sequence"
+(*     let auto_cancel = false *)
+(*     let pp f _ = Fmt.string f "commit sequence" *)
 
-    let build state job commits =
-      let open Lwt.Syntax in
-      let* () = Current.Job.start ~level:Harmless job in
-      Lwt.return_ok (next ~job state commits)
-  end
+(*     let build state job commits = *)
+(*       let open Lwt.Syntax in *)
+(*       let* () = Current.Job.start ~level:Harmless job in *)
+(*       Lwt.return_ok (next ~job state commits) *)
+(*   end *)
 
-  module Seq = Current_cache.Make (Op)
+(*   module Seq = Current_cache.Make (Op) *)
 
-  let v commits =
-    let state = empty "" in
-    let open Current.Syntax in
-    Current.component "Cycle commits"
-    |> let> commits = commits in
-       Seq.get state commits
-end
+  (* let v commits = *)
+  (*   let state = empty "" in *)
+  (*   let open Current.Syntax in *)
+  (*   Current.component "Cycle commits" *)
+  (*   |> let> commits = commits in *)
+  (*      Seq.get state commits *)
+(* end *)
 
 module Spec = struct
   module Docker = struct
@@ -130,17 +132,21 @@ end
 
 let program_name = "tezos-ci"
 
-let commit gref =
-  Git.clone ~schedule:monthly ~gref "https://gitlab.com/tezos/tezos"
+(* TODO Replaced by `Gitlab.Api.head_commit gitlab repo_id` *)
+(* let commit gref = *)
+(*   Git.clone ~schedule:monthly ~gref "https://gitlab.com/tezos/tezos" *)
 
 (* https://gitlab.com/tezos/tezos/-/merge_requests/2970/commits *)
-let commits =
-  [
-    commit "master";
-    commit "638f524f5e8a0bd43271202e98d62683e0120057";
-    (* Stdlib.Compare.Z: use Z.Compare rather than Make(Z) *)
-  ]
-  |> Current.list_seq
+(* let commits = *)
+(*   [ *)
+(*     commit "master"; *)
+(*     commit "638f524f5e8a0bd43271202e98d62683e0120057"; *)
+(*     (\* Stdlib.Compare.Z: use Z.Compare rather than Make(Z) *\) *)
+(*   ] *)
+(*   |> Current.list_seq *)
+
+let repo_id =
+  Gitlab.Repo_id.({owner = "tezos"; name = "tezos"})
 
 let do_build ~filter label =
   match filter with None -> true | Some filter -> List.mem label filter
@@ -152,9 +158,13 @@ let maybe_build ~filter ~label v =
     let* () = Current.return ~label:("Build skipped: " ^ label) () in
     Current.active `Ready
 
-let pipeline ocluster filter =
+let pipeline ocluster filter gitlab =
   let open Current.Syntax in
-  let repo_tezos = Commit_sequence.v commits in
+  (* let repo_tezos = Commit_sequence.v commits in *)
+  let head = Gitlab.Api.head_commit gitlab repo_id in
+  (* |> Current.list_iter (module Gitlab.Api.Commit) @@ fun head -> *)
+  let repo_tezos = Git.fetch (Current.map Gitlab.Api.Commit.id head) in
+
   let build =
     match ocluster with
     | None ->
@@ -190,7 +200,7 @@ let pipeline ocluster filter =
         |> Current.collapse ~key:"stage" ~value:"coverage" ~input:analysis );
     ]
 
-let main current_config mode (`Ocluster_cap cap) (`Filter filter) =
+let main current_config mode gitlab (`Ocluster_cap cap) (`Filter filter) =
   let ocluster =
     Option.map
       (fun cap ->
@@ -204,7 +214,7 @@ let main current_config mode (`Ocluster_cap cap) (`Filter filter) =
   in
   let engine =
     Current.Engine.create ~config:current_config (fun () ->
-        pipeline ocluster filter)
+        pipeline ocluster filter gitlab)
   in
   let site =
     let routes = Current_web.routes engine in
@@ -244,6 +254,7 @@ let cmd =
       const main
       $ Current.Config.cmdliner
       $ Current_web.cmdliner
+      $ Current_gitlab.Api.cmdliner 
       $ ocluster_cap
       $ filter),
     Term.info program_name ~doc )
