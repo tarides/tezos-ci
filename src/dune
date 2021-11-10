@@ -11,6 +11,7 @@
   current_web
   current_docker
   current_ocluster
+  current_gitlab
   capnp-rpc-unix
   astring
   dockerfile
