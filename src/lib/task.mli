@@ -4,6 +4,7 @@ type 'a status =
     | `Msg of string
     | `Cancelled
     | `Blocked
+    | `Skipped_failure
     | `Skipped of string ] )
   result
 
@@ -12,7 +13,11 @@ type subtask_value =
       (Current_ocluster.Artifacts.t option status * Current.Metadata.t option)
   | Stage of subtask_node list
 
-and subtask_node = { name : string; value : subtask_value }
+and subtask_node =
+  | Node of { name : string; value : subtask_value }
+  | Failure_allowed of subtask_node
+
+val sub_name : subtask_node -> string
 
 val item :
   name:string ->

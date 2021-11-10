@@ -22,6 +22,7 @@ let emoji_of_status =
   | Error `Cancelled -> span ~a:[ a_title "Cancelled" ] [ txt "🛑 " ]
   | Error (`Msg msg) -> span ~a:[ a_title ("Error: " ^ msg) ] [ txt "❌ " ]
   | Error (`Skipped msg) -> span ~a:[ a_title ("Skipped: " ^ msg) ] [ txt "⚪ " ]
+  | Error `Skipped_failure -> span ~a:[ a_title "Skipped failure" ] [ txt "⏹ " ]
 
 let list_pipelines ~state =
   let open Tyxml_html in
@@ -45,7 +46,9 @@ let list_pipelines ~state =
 let show_pipeline ~state name =
   let ppl = StringMap.find name !state in
   let stages =
-    match ppl.Task.value with Item _ -> assert false | Stage stages -> stages
+    match ppl with
+    | Task.Failure_allowed _ | Node { value = Item _; _ } -> assert false
+    | Node { value = Stage stages; _ } -> stages
   in
   let open Tyxml_html in
   [
@@ -58,8 +61,9 @@ let show_pipeline ~state name =
              [
                emoji_of_status (Task.status stage);
                a
-                 ~a:[ a_href ("/pipelines/" ^ name ^ "/" ^ stage.name) ]
-                 [ txt stage.name ];
+                 ~a:
+                   [ a_href ("/pipelines/" ^ name ^ "/" ^ Task.sub_name stage) ]
+                 [ txt (Task.sub_name stage) ];
              ])
          stages);
   ]
@@ -144,32 +148,47 @@ let maybe_artifacts =
   | _ -> txt ""
 
 let rec get_job_tree ~uri_base (stage : Task.subtask_node) =
+  let status = Task.status stage in
   let emoji = emoji_of_status (Task.status stage) in
   let open Tyxml_html in
-  match stage.value with
-  | Item (artifacts, Some { Current.Metadata.job_id = Some job_id; _ }) ->
+  match (stage, status) with
+  | Failure_allowed node, Error `Skipped_failure ->
       [
-        emoji;
-        a ~a:[ a_href (uri_base ^ "/" ^ job_id) ] [ txt stage.name ];
-        i [ txt (get_job_run_time_info job_id) ];
-        maybe_artifacts artifacts;
+        div
+          ~a:[ a_style "display: flex" ]
+          [
+            div
+              ~a:[ a_style "margin-right: 0.5rem" ]
+              [ emoji; i [ txt "skipped" ] ];
+            div (get_job_tree ~uri_base node);
+          ];
       ]
-  | Item _ -> [ emoji; txt stage.name ]
-  | Stage rest ->
-      [
-        emoji;
-        txt stage.name;
-        ul (List.map (fun v -> li (get_job_tree ~uri_base v)) rest);
-      ]
+  | Failure_allowed node, _ -> get_job_tree ~uri_base node
+  | Node stage, _ -> (
+      match stage.value with
+      | Item (artifacts, Some { Current.Metadata.job_id = Some job_id; _ }) ->
+          [
+            emoji;
+            a ~a:[ a_href (uri_base ^ "/" ^ job_id) ] [ txt stage.name ];
+            i [ txt (get_job_run_time_info job_id) ];
+            maybe_artifacts artifacts;
+          ]
+      | Item _ -> [ emoji; txt stage.name ]
+      | Stage rest ->
+          [
+            emoji;
+            txt stage.name;
+            ul (List.map (fun v -> li (get_job_tree ~uri_base v)) rest);
+          ])
 
 let show_pipeline_task ~state name stage_name =
   let pipeline = StringMap.find name !state in
   let stages =
-    match pipeline.Task.value with
-    | Item _ -> assert false
-    | Stage stages -> stages
+    match pipeline with
+    | Task.Failure_allowed _ | Node { value = Item _; _ } -> assert false
+    | Node { value = Stage stages; _ } -> stages
   in
-  let stage = List.find (fun t -> t.Task.name = stage_name) stages in
+  let stage = List.find (fun t -> Task.sub_name t = stage_name) stages in
 
   let open Tyxml_html in
   [
@@ -202,11 +221,11 @@ let show_pipeline_task_job ~state name stage_name wildcard =
   in
   let pipeline = StringMap.find name !state in
   let stages =
-    match pipeline.Task.value with
-    | Item _ -> assert false
-    | Stage stages -> stages
+    match pipeline with
+    | Task.Failure_allowed _ | Node { value = Item _; _ } -> assert false
+    | Node { value = Stage stages; _ } -> stages
   in
-  let stage = List.find (fun t -> t.Task.name = stage_name) stages in
+  let stage = List.find (fun t -> Task.sub_name t = stage_name) stages in
 
   let open Tyxml_html in
   [

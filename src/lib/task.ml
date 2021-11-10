@@ -4,13 +4,14 @@ type 'a status =
     | `Msg of string
     | `Cancelled
     | `Blocked
+    | `Skipped_failure
     | `Skipped of string ] )
   result
 
 let status_of_state_and_metadata state metadata =
   match (state, metadata) with
   | Ok v, _ -> Ok v
-  | (Error (`Skipped _) as e), _ -> e
+  | (Error (`Skipped _ | `Skipped_failure) as e), _ -> e
   | Error _, Some { Current.Metadata.job_id = None; _ } -> Error `Blocked
   | Error _, None -> Error `Blocked
   | (Error (`Active _) as e), _ -> e
@@ -19,6 +20,7 @@ let status_of_state_and_metadata state metadata =
 
 let to_int = function
   | Error (`Skipped _) -> 0
+  | Error `Skipped_failure -> 0
   | Ok _ -> 1
   | Error `Blocked -> 2
   | Error (`Active `Ready) -> 3
@@ -32,18 +34,26 @@ let status_of_list =
     (Error (`Skipped "no task to do"))
 
 type subtask_value =
-  | Item of (Current_ocluster.Artifacts.t option status * Current.Metadata.t option)
+  | Item of
+      (Current_ocluster.Artifacts.t option status * Current.Metadata.t option)
   | Stage of subtask_node list
 
-and subtask_node = { name : string; value : subtask_value }
+and subtask_node =
+  | Node of { name : string; value : subtask_value }
+  | Failure_allowed of subtask_node
+
+let rec sub_name = function
+  | Failure_allowed node -> sub_name node
+  | Node { name; _ } -> name
 
 let rec status = function
-  | { value = Item (status, _); _ } -> status
-  | { value = Stage subtasks; _ } ->
+  | Node { value = Item (status, _); _ } -> status
+  | Node { value = Stage subtasks; _ } ->
       subtasks |> List.map status |> status_of_list
+  | Failure_allowed _node -> Error `Skipped_failure
 
-let item ~name ?metadata item = { name; value = Item (item, metadata) }
-let group ~name items = { name; value = Stage items }
+let item ~name ?metadata item = Node { name; value = Item (item, metadata) }
+let group ~name items = Node { name; value = Stage items }
 
 type t = { current : unit Current.t; subtasks_status : subtask_node Current.t }
 
@@ -111,11 +121,21 @@ let skip ~name reason =
   {
     current = Current.return ();
     subtasks_status =
-      Current.return { name; value = Item (Error (`Skipped reason), None) };
+      Current.return
+        (Node { name; value = Item (Error (`Skipped reason), None) });
   }
 
 let allow_failures { current; subtasks_status } =
+  let subtasks_status =
+    let open Current.Syntax in
+    let+ subtasks_status = subtasks_status in
+    Failure_allowed subtasks_status
+  in
   {
-    current = Current.state ~hidden:true current |> Current.map (fun _ -> ());
+    current =
+      current
+      |> Current.map_error (fun _ -> "failure allowed")
+      |> Current.state ~hidden:true
+      |> Current.map (fun _ -> ());
     subtasks_status;
   }
