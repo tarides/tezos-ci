@@ -5,15 +5,15 @@ A translation of Tezos' Gitlab CI (https://gitlab.com/tezos/tezos/-/tree/master/
 ### What is supported
 
 * Build: `build_arm64`, `build_x86_64`
+* Coverage: `test_coverage`
+* Documentation: `documentation:build`
 * Integration tests `integration:*`
+* Tezt: `test:*`
+* Unit: `unit:*`
 
 ### What remains to do
 
-* Documentation: `documentation:build`
-* Tezt: `test:*`
-* Unit: `unit:*`
 * Manual: `documentation:build_all`, `documentation:link_check`, `publish:docker_manual`
-* Coverage: `test_coverage`
 
 ## Running
 
