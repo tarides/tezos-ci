@@ -65,57 +65,85 @@ module Run_time = struct
       else (* if us > 0 then *)
         Format.fprintf ppf "%Ld.%03Ldus" us ns
 
-  type t =
+  type info =
     | No_info
     | Running_since of float
     | Finished of { ready : float; running : float option; finished : float }
 
-  let pp f = function
-    | No_info -> ()
+  type t = { total : float option; info : info }
+
+  let empty = { total = None; info = No_info }
+
+  let info_to_string = function
+    | No_info -> ""
     | Running_since v ->
-        Fmt.pf f " (running for %a)" duration_pp
+        Fmt.str " (running for %a)" duration_pp
           (Duration.of_f (Unix.gettimeofday () -. v))
     | Finished { ready; running = None; finished } ->
-        Fmt.pf f " (%a queued)" duration_pp (Duration.of_f (finished -. ready))
+        Fmt.str " (%a queued)" duration_pp (Duration.of_f (finished -. ready))
     | Finished { running = Some running; finished; _ } ->
-        Fmt.pf f " (%a)" duration_pp (Duration.of_f (finished -. running))
+        Fmt.str " (%a)" duration_pp (Duration.of_f (finished -. running))
 
-  let to_string = Fmt.to_to_string pp
+  let to_elem t =
+    let open Tyxml_html in
+    let a =
+      Option.map
+        (fun total ->
+          Fmt.to_to_string duration_pp (Duration.of_f total) |> a_title)
+        t.total
+      |> Option.to_list
+    in
+    span ~a [ txt (info_to_string t.info) ]
 
   let of_job job_id =
-    match Current.Job.lookup_running job_id with
-    | Some job -> (
-        match Lwt.state (Current.Job.start_time job) with
-        | Lwt.Sleep | Lwt.Fail _ -> No_info
-        | Lwt.Return t -> Running_since t)
-    | None -> (
-        let results = Current_cache.Db.query ~job_prefix:job_id () in
-        match results with
-        | [ { Current_cache.Db.ready; running; finished; _ } ] ->
-            Finished { ready; running; finished }
-        | _ -> No_info)
+    let info =
+      match Current.Job.lookup_running job_id with
+      | Some job -> (
+          match Lwt.state (Current.Job.start_time job) with
+          | Lwt.Sleep | Lwt.Fail _ -> No_info
+          | Lwt.Return t -> Running_since t)
+      | None -> (
+          let results = Current_cache.Db.query ~job_prefix:job_id () in
+          match results with
+          | [ { Current_cache.Db.ready; running; finished; _ } ] ->
+              Finished { ready; running; finished }
+          | _ -> No_info)
+    in
+    { total = None; info }
+
+  let run_time = function
+    | { total = Some v; _ } -> v
+    | { info = No_info; _ } -> 0.
+    | { info = Running_since v; _ } -> Unix.gettimeofday () -. v
+    | { info = Finished { finished; running = Some running; _ }; _ } ->
+        finished -. running
+    | _ -> 0.
 
   let merge t1 t2 =
-    match (t1, t2) with
-    | No_info, t2 -> t2
-    | t1, No_info -> t1
-    | Running_since v1, Running_since v2 -> Running_since (Float.min v1 v2)
-    | Running_since v1, Finished { ready; _ } ->
-        Running_since (Float.min v1 ready)
-    | Finished { ready; _ }, Running_since v2 ->
-        Running_since (Float.min ready v2)
-    | Finished v1, Finished v2 ->
-        Finished
-          {
-            ready = Float.min v1.ready v2.ready;
-            running =
-              (match (v1.running, v2.running) with
-              | None, None -> None
-              | Some v1, None -> Some v1
-              | None, Some v2 -> Some v2
-              | Some v1, Some v2 -> Some (Float.min v1 v2));
-            finished = Float.max v1.finished v2.finished;
-          }
+    let info =
+      match (t1.info, t2.info) with
+      | No_info, t2 -> t2
+      | t1, No_info -> t1
+      | Running_since v1, Running_since v2 -> Running_since (Float.min v1 v2)
+      | Running_since v1, Finished { ready; _ } ->
+          Running_since (Float.min v1 ready)
+      | Finished { ready; _ }, Running_since v2 ->
+          Running_since (Float.min ready v2)
+      | Finished v1, Finished v2 ->
+          Finished
+            {
+              ready = Float.min v1.ready v2.ready;
+              running =
+                (match (v1.running, v2.running) with
+                | None, None -> None
+                | Some v1, None -> Some v1
+                | None, Some v2 -> Some v2
+                | Some v1, Some v2 -> Some (Float.min v1 v2));
+              finished = Float.max v1.finished v2.finished;
+            }
+    in
+    let total = Some (run_time t1 +. run_time t2) in
+    { info; total }
 
   module Syntax = struct
     let ( let+ ) (v, run_time) f = (f v, run_time)
@@ -166,22 +194,22 @@ let rec get_job_tree ~uri_base (stage : Task.subtask_node) =
           ( [
               emoji;
               a ~a:[ a_href (uri_base ^ "/" ^ job_id) ] [ txt stage.name ];
-              i [ txt (Run_time.to_string run_time_info) ];
+              i [ Run_time.to_elem run_time_info ];
               maybe_artifacts artifacts;
             ],
             run_time_info )
-      | Item _ -> ([ emoji; txt stage.name ], Run_time.No_info)
+      | Item _ -> ([ emoji; txt stage.name ], Run_time.empty)
       | Stage rest ->
           let children_nodes, run_time_info =
             List.map (get_job_tree ~uri_base) rest |> List.split
           in
           let run_time_info =
-            List.fold_left Run_time.merge Run_time.No_info run_time_info
+            List.fold_left Run_time.merge Run_time.empty run_time_info
           in
           ( [
               emoji;
               txt stage.name;
-              i [ txt (Run_time.to_string run_time_info) ];
+              i [ Run_time.to_elem run_time_info ];
               ul (List.map li children_nodes);
             ],
             run_time_info ))
@@ -195,7 +223,7 @@ let list_pipelines ~state =
         [
           emoji_of_status (Task.status ppl);
           a ~a:[ a_href ("/pipelines/" ^ name) ] [ txt name ];
-          i [ txt (Run_time.to_string run_time) ];
+          i [ Run_time.to_elem run_time ];
         ];
     ]
   in
@@ -229,7 +257,7 @@ let show_pipeline ~state name =
                  ~a:
                    [ a_href ("/pipelines/" ^ name ^ "/" ^ Task.sub_name stage) ]
                  [ txt (Task.sub_name stage) ];
-               i [ txt (Run_time.to_string run_time) ];
+               i [ Run_time.to_elem run_time ];
              ])
          stages);
   ]
