@@ -24,14 +24,178 @@ let emoji_of_status =
   | Error (`Skipped msg) -> span ~a:[ a_title ("Skipped: " ^ msg) ] [ txt "⚪ " ]
   | Error `Skipped_failure -> span ~a:[ a_title "Skipped failure" ] [ txt "⏹ " ]
 
+module Run_time = struct
+  let duration_pp ppf t =
+    let hour = 3600_000_000_000L in
+    let day = Int64.mul 24L hour in
+    let year = Int64.mul 8766L hour in
+    let open Duration in
+    let min = to_min t in
+    if min > 0 then
+      let y = to_year t in
+      let left = Int64.rem t year in
+      let d = to_day left in
+      let left = Int64.rem left day in
+      if y > 0 then Format.fprintf ppf "%da%dd" y d
+      else
+        let h = to_hour left in
+        let left = Int64.rem left hour in
+        if d > 0 then Format.fprintf ppf "%dd%02dh" d h
+        else
+          let min = to_min left in
+          let left = Int64.sub t (of_min min) in
+          let sec = to_sec left in
+          if h > 0 then Format.fprintf ppf "%dh%02dm" h min
+          else (* if m > 0 then *)
+            Format.fprintf ppf "%dm%02ds" min sec
+    else
+      (* below one minute *)
+      let fields t =
+        let sec = to_sec_64 t in
+        let left = Int64.sub t (of_sec_64 sec) in
+        let ms = to_ms_64 left in
+        let left = Int64.sub left (of_ms_64 ms) in
+        let us = to_us_64 left in
+        let ns = Int64.(sub left (of_us_64 us)) in
+        (sec, ms, us, ns)
+      in
+      let s, ms, us, ns = fields t in
+      if s > 0L then Format.fprintf ppf "%Lds" s
+      else if ms > 0L then Format.fprintf ppf "%Ldms" ms
+      else (* if us > 0 then *)
+        Format.fprintf ppf "%Ld.%03Ldus" us ns
+
+  type t =
+    | No_info
+    | Running_since of float
+    | Finished of { ready : float; running : float option; finished : float }
+
+  let pp f = function
+    | No_info -> ()
+    | Running_since v ->
+        Fmt.pf f " (running for %a)" duration_pp
+          (Duration.of_f (Unix.gettimeofday () -. v))
+    | Finished { ready; running = None; finished } ->
+        Fmt.pf f " (%a queued)" duration_pp (Duration.of_f (finished -. ready))
+    | Finished { running = Some running; finished; _ } ->
+        Fmt.pf f " (%a)" duration_pp (Duration.of_f (finished -. running))
+
+  let to_string = Fmt.to_to_string pp
+
+  let of_job job_id =
+    match Current.Job.lookup_running job_id with
+    | Some job -> (
+        match Lwt.state (Current.Job.start_time job) with
+        | Lwt.Sleep | Lwt.Fail _ -> No_info
+        | Lwt.Return t -> Running_since t)
+    | None -> (
+        let results = Current_cache.Db.query ~job_prefix:job_id () in
+        match results with
+        | [ { Current_cache.Db.ready; running; finished; _ } ] ->
+            Finished { ready; running; finished }
+        | _ -> No_info)
+
+  let merge t1 t2 =
+    match (t1, t2) with
+    | No_info, t2 -> t2
+    | t1, No_info -> t1
+    | Running_since v1, Running_since v2 -> Running_since (Float.min v1 v2)
+    | Running_since v1, Finished { ready; _ } ->
+        Running_since (Float.min v1 ready)
+    | Finished { ready; _ }, Running_since v2 ->
+        Running_since (Float.min ready v2)
+    | Finished v1, Finished v2 ->
+        Finished
+          {
+            ready = Float.min v1.ready v2.ready;
+            running =
+              (match (v1.running, v2.running) with
+              | None, None -> None
+              | Some v1, None -> Some v1
+              | None, Some v2 -> Some v2
+              | Some v1, Some v2 -> Some (Float.min v1 v2));
+            finished = Float.max v1.finished v2.finished;
+          }
+
+  module Syntax = struct
+    let ( let+ ) (v, run_time) f = (f v, run_time)
+  end
+end
+
+let maybe_artifacts =
+  let open Tyxml_html in
+  function
+  | Ok (Some artifacts) ->
+      span
+        [
+          txt "  ";
+          a
+            ~a:
+              [
+                a_href
+                  (Current_ocluster.Artifacts.public_path artifacts
+                  |> Fpath.to_string);
+              ]
+            [ txt "⤵️ artifacts " ];
+        ]
+  | _ -> txt ""
+
+let rec get_job_tree ~uri_base (stage : Task.subtask_node) =
+  let open Run_time.Syntax in
+  let status = Task.status stage in
+  let emoji = emoji_of_status (Task.status stage) in
+  let open Tyxml_html in
+  match (stage, status) with
+  | Failure_allowed node, Error `Skipped_failure ->
+      let+ child = get_job_tree ~uri_base node in
+      [
+        div
+          ~a:[ a_style "display: flex" ]
+          [
+            div
+              ~a:[ a_style "margin-right: 0.5rem" ]
+              [ emoji; i [ txt "skipped" ] ];
+            div child;
+          ];
+      ]
+  | Failure_allowed node, _ -> get_job_tree ~uri_base node
+  | Node stage, _ -> (
+      match stage.value with
+      | Item (artifacts, Some { Current.Metadata.job_id = Some job_id; _ }) ->
+          let run_time_info = Run_time.of_job job_id in
+          ( [
+              emoji;
+              a ~a:[ a_href (uri_base ^ "/" ^ job_id) ] [ txt stage.name ];
+              i [ txt (Run_time.to_string run_time_info) ];
+              maybe_artifacts artifacts;
+            ],
+            run_time_info )
+      | Item _ -> ([ emoji; txt stage.name ], Run_time.No_info)
+      | Stage rest ->
+          let children_nodes, run_time_info =
+            List.map (get_job_tree ~uri_base) rest |> List.split
+          in
+          let run_time_info =
+            List.fold_left Run_time.merge Run_time.No_info run_time_info
+          in
+          ( [
+              emoji;
+              txt stage.name;
+              i [ txt (Run_time.to_string run_time_info) ];
+              ul (List.map li children_nodes);
+            ],
+            run_time_info ))
+
 let list_pipelines ~state =
   let open Tyxml_html in
   let show_pipeline (name, ppl) =
+    let _, run_time = get_job_tree ~uri_base:"" ppl in
     [
       h2
         [
           emoji_of_status (Task.status ppl);
           a ~a:[ a_href ("/pipelines/" ^ name) ] [ txt name ];
+          i [ txt (Run_time.to_string run_time) ];
         ];
     ]
   in
@@ -57,6 +221,7 @@ let show_pipeline ~state name =
     ul
       (List.map
          (fun (stage : Task.subtask_node) ->
+           let _, run_time = get_job_tree ~uri_base:"" stage in
            li
              [
                emoji_of_status (Task.status stage);
@@ -64,122 +229,10 @@ let show_pipeline ~state name =
                  ~a:
                    [ a_href ("/pipelines/" ^ name ^ "/" ^ Task.sub_name stage) ]
                  [ txt (Task.sub_name stage) ];
+               i [ txt (Run_time.to_string run_time) ];
              ])
          stages);
   ]
-
-let duration_pp ppf t =
-  let hour = 3600_000_000_000L in
-  let day = Int64.mul 24L hour in
-  let year = Int64.mul 8766L hour in
-  let open Duration in
-  let min = to_min t in
-  if min > 0 then
-    let y = to_year t in
-    let left = Int64.rem t year in
-    let d = to_day left in
-    let left = Int64.rem left day in
-    if y > 0 then Format.fprintf ppf "%da%dd" y d
-    else
-      let h = to_hour left in
-      let left = Int64.rem left hour in
-      if d > 0 then Format.fprintf ppf "%dd%02dh" d h
-      else
-        let min = to_min left in
-        let left = Int64.sub t (of_min min) in
-        let sec = to_sec left in
-        if h > 0 then Format.fprintf ppf "%dh%02dm" h min
-        else (* if m > 0 then *)
-          Format.fprintf ppf "%dm%02ds" min sec
-  else
-    (* below one minute *)
-    let fields t =
-      let sec = to_sec_64 t in
-      let left = Int64.sub t (of_sec_64 sec) in
-      let ms = to_ms_64 left in
-      let left = Int64.sub left (of_ms_64 ms) in
-      let us = to_us_64 left in
-      let ns = Int64.(sub left (of_us_64 us)) in
-      (sec, ms, us, ns)
-    in
-    let s, ms, us, ns = fields t in
-    if s > 0L then Format.fprintf ppf "%Lds" s
-    else if ms > 0L then Format.fprintf ppf "%Ldms" ms
-    else (* if us > 0 then *)
-      Format.fprintf ppf "%Ld.%03Ldus" us ns
-
-let get_job_run_time_info job_id =
-  match Current.Job.lookup_running job_id with
-  | Some job -> (
-      match Lwt.state (Current.Job.start_time job) with
-      | Lwt.Sleep -> ""
-      | Lwt.Return t ->
-          Fmt.str " (running for %a)" duration_pp
-            (Duration.of_f (Unix.gettimeofday () -. t))
-      | Lwt.Fail _ -> "")
-  | None -> (
-      let results = Current_cache.Db.query ~job_prefix:job_id () in
-      match results with
-      | [ { Current_cache.Db.ready; running; finished; _ } ] -> (
-          match running with
-          | None ->
-              Fmt.str " (%a queued)" duration_pp
-                (Duration.of_f (finished -. ready))
-          | Some running ->
-              Fmt.str " (%a)" duration_pp (Duration.of_f (finished -. running)))
-      | _ -> "")
-
-let maybe_artifacts =
-  let open Tyxml_html in
-  function
-  | Ok (Some artifacts) ->
-      span
-        [
-          txt "  ";
-          a
-            ~a:
-              [
-                a_href
-                  (Current_ocluster.Artifacts.public_path artifacts
-                  |> Fpath.to_string);
-              ]
-            [ txt "⤵️ artifacts " ];
-        ]
-  | _ -> txt ""
-
-let rec get_job_tree ~uri_base (stage : Task.subtask_node) =
-  let status = Task.status stage in
-  let emoji = emoji_of_status (Task.status stage) in
-  let open Tyxml_html in
-  match (stage, status) with
-  | Failure_allowed node, Error `Skipped_failure ->
-      [
-        div
-          ~a:[ a_style "display: flex" ]
-          [
-            div
-              ~a:[ a_style "margin-right: 0.5rem" ]
-              [ emoji; i [ txt "skipped" ] ];
-            div (get_job_tree ~uri_base node);
-          ];
-      ]
-  | Failure_allowed node, _ -> get_job_tree ~uri_base node
-  | Node stage, _ -> (
-      match stage.value with
-      | Item (artifacts, Some { Current.Metadata.job_id = Some job_id; _ }) ->
-          [
-            emoji;
-            a ~a:[ a_href (uri_base ^ "/" ^ job_id) ] [ txt stage.name ];
-            i [ txt (get_job_run_time_info job_id) ];
-            maybe_artifacts artifacts;
-          ]
-      | Item _ -> [ emoji; txt stage.name ]
-      | Stage rest ->
-          [
-            emoji;
-            txt stage.name;
-            ul (List.map (fun v -> li (get_job_tree ~uri_base v)) rest);
-          ])
 
 let show_pipeline_task ~state name stage_name =
   let pipeline = StringMap.find name !state in
@@ -189,7 +242,9 @@ let show_pipeline_task ~state name stage_name =
     | Node { value = Stage stages; _ } -> stages
   in
   let stage = List.find (fun t -> Task.sub_name t = stage_name) stages in
-
+  let job_tree, _run_time_info =
+    get_job_tree ~uri_base:("/pipelines/" ^ name ^ "/" ^ stage_name) stage
+  in
   let open Tyxml_html in
   [
     h1
@@ -199,7 +254,7 @@ let show_pipeline_task ~state name stage_name =
       ];
     h2 [ emoji_of_status (Task.status stage); txt ("Stage " ^ stage_name) ];
     h3 [ txt "Job tree" ];
-    div (get_job_tree ~uri_base:("/pipelines/" ^ name ^ "/" ^ stage_name) stage);
+    div job_tree;
   ]
 
 let get_job_text job_id =
@@ -226,6 +281,9 @@ let show_pipeline_task_job ~state name stage_name wildcard =
     | Node { value = Stage stages; _ } -> stages
   in
   let stage = List.find (fun t -> Task.sub_name t = stage_name) stages in
+  let job_tree, _run_time_info =
+    get_job_tree ~uri_base:("/pipelines/" ^ name ^ "/" ^ stage_name) stage
+  in
 
   let open Tyxml_html in
   [
@@ -249,10 +307,7 @@ let show_pipeline_task_job ~state name stage_name wildcard =
                   [ txt ("Stage " ^ stage_name) ];
               ];
             h3 [ txt "Job tree" ];
-            div
-              (get_job_tree
-                 ~uri_base:("/pipelines/" ^ name ^ "/" ^ stage_name)
-                 stage);
+            div job_tree;
           ];
         div ~a:[ a_style "width: 50%" ]
           [
