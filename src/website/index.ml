@@ -228,7 +228,18 @@ let list_pipelines ~state =
     ]
   in
   [
-    h1 [ txt "Pipelines" ];
+    div
+      [
+        h1 [ txt "Tezos CI" ];
+        p
+          [
+            txt "Source code on Github: ";
+            a
+              ~a:[ a_href "https://github.com/TheLortex/tezos-ci" ]
+              [ txt "TheLortex/tezos-ci" ];
+          ];
+      ];
+    h2 [ txt "Pipelines" ];
     ul
       (List.map
          (fun binding -> li (show_pipeline binding))
