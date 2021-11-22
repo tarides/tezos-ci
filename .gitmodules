@@ -4,6 +4,3 @@
 [submodule "ocurrent"]
 	path = ocurrent
 	url = https://github.com/TheLortex/ocurrent.git
-[submodule "ocaml-gitlab"]
-	path = ocaml-gitlab
-	url = https://github.com/tmcgilchrist/ocaml-gitlab.git

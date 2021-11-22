@@ -1,10 +1,46 @@
-type source =
-  | Schedule of Current_cache.Schedule.t
-  | Branch of string
-  | Tag of string
-  | Merge_request of { from_branch : string; to_branch : string }
+module Source = struct
+  type t =
+    | Schedule of Current_cache.Schedule.t
+    | Branch of string
+    | Tag of string
+    | Merge_request of { from_branch : string; to_branch : string }
 
-type t = { source : source; commit : Current_git.Commit_id.t Current.t }
+  let pp f = function
+    | Schedule _ -> Fmt.pf f "schedule"
+    | Branch b -> Fmt.pf f "branch:%s" b
+    | Tag t -> Fmt.pf f "tag:%s" t
+    | Merge_request { from_branch; to_branch } ->
+        Fmt.pf f "mr:%s:%s" from_branch to_branch
+
+  let to_string = Fmt.to_to_string pp
+
+  let of_string v =
+    match String.split_on_char ':' v with
+    | [ "schedule" ] -> failwith "not implemented"
+    | [ "branch"; branch ] -> Branch branch
+    | [ "tag"; tag ] -> Tag tag
+    | [ "mr"; from_branch; to_branch ] ->
+        Merge_request { from_branch; to_branch }
+    | _ -> failwith "unknown source"
+
+  let link_to = function
+    | Schedule _ -> ""
+    | Branch b -> "https://gitlab.com/tezos/tezos/-/tree/" ^ b
+    | Tag t -> "https://gitlab.com/tezos/tezos/-/tags/" ^ t
+    | Merge_request { from_branch; _ } ->
+        "https://gitlab.com/tezos/tezos/-/merge_requests/" ^ from_branch
+  (* XXX: hack *)
+
+  let compare s1 s2 = compare s1 s2 (* XXX: better compare function ?*)
+
+  module Map = Map.Make (struct
+    type nonrec t = t
+
+    let compare = compare
+  end)
+end
+
+type t = { source : Source.t; commit : Current_git.Commit_id.t Current.t }
 
 let v source commit = { source; commit }
 
@@ -30,13 +66,13 @@ type should_run = Yes | Manual | No
 
 let should_run mode source =
   let branch_or_mr_source_branch_match value = function
-    | Branch branch when branch_match branch value -> true
+    | Source.Branch branch when branch_match branch value -> true
     | Merge_request { from_branch; _ } when branch_match from_branch value ->
         true
     | _ -> false
   in
   let is_master_or_release = function
-    | Schedule _ | Branch "master" | Tag _ -> true
+    | Source.Schedule _ | Branch "master" | Tag _ -> true
     | v -> branch_or_mr_source_branch_match "release" v
   in
 
@@ -47,7 +83,7 @@ let should_run mode source =
   | Development_manual, _ -> No
   | Master_and_releases, v when is_master_or_release v -> Yes
   | Master_and_releases, _ -> No
-  | Master, Branch "master" -> Yes
+  | Master, Source.Branch "master" -> Yes
   | Master, _ -> No
   | Development_documentation, Schedule _ -> Yes
   | Development_documentation, v when branch_or_mr_source_branch_match "doc" v

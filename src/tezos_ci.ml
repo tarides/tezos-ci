@@ -8,58 +8,92 @@ let program_name = "tezos-ci"
 let repo_id =
   { Gitlab.Repo_id.owner = "tezos"; name = "tezos"; project_id = 3836952 }
 
-let ppl_ci ~index ~ocluster ~gitlab =
-  Gitlab.Api.ci_refs gitlab ~staleness:(Duration.of_day 30) repo_id
-  |> Current.list_iter (module Gitlab.Api.Commit) @@ fun head ->
-     let commit = Current.map Gitlab.Api.Commit.id head in
-     let builder =
-       match ocluster with
-       | None -> Lib.Builder.make_docker
-       | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster
-     in
-     let task =
-       Pipeline.v
-         (Merge_request { from_branch = "master"; to_branch = "master" })
-         commit
-       |> Pipeline.pipeline ~builder
-     in
-     Current.all
-       [
-         task.current;
-         Website.Index.update_state index
-           ~id:
-             (Current.map
-                (fun commit -> "commit:" ^ Current_git.Commit_id.hash commit)
-                commit)
-           task.subtasks_status;
-       ]
+let ci_refs_staleness = Duration.of_day 1
 
-let ppl_master ~index ~ocluster ~gitlab =
-  let head = Gitlab.Api.head_commit gitlab repo_id in
-  let repo_tezos_master = Git.fetch (Current.map Gitlab.Api.Commit.id head) in
-  let builder =
-    match ocluster with
-    | None -> Lib.Builder.make_docker
-    | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster
+let ci_refs gitlab =
+  let to_ptime str =
+    Ptime.of_rfc3339 str |> function
+    | Ok (t, _, _) -> t
+    | Error (`RFC3339 (_, e)) -> Fmt.failwith "%a" Ptime.pp_rfc3339_error e
   in
-  let task =
-    Pipeline.v (Branch "master") (repo_tezos_master |> Current.map Git.Commit.id)
-    |> Pipeline.pipeline ~builder
+  let is_not_stale ~default_ref (ref, commit) =
+    let cutoff = Unix.gettimeofday () -. Duration.to_f ci_refs_staleness in
+    let active x =
+      let committed =
+        Ptime.to_float_s (to_ptime (Gitlab.Api.Commit.committed_date x))
+      in
+      committed > cutoff
+    in
+    let is_default = function
+      | Pipeline.Source.Branch name ->
+          String.equal default_ref ("refs/heads" ^ name)
+      | _ -> false
+    in
+    is_default ref || active commit
   in
-  Current.all
-    [
-      task.current;
-      Website.Index.update_state index
-        ~id:(Current.return "branch:master")
-        task.subtasks_status;
-    ]
+
+  let process_ref = function
+    | `PR number ->
+        Pipeline.Source.Merge_request
+          { from_branch = string_of_int number; to_branch = "master" }
+    | `Ref ref -> (
+        match String.split_on_char '/' ref with
+        | [ "refs"; "heads"; branch ] -> Pipeline.Source.Branch branch
+        | [ "refs"; "tags"; tag ] -> Pipeline.Source.Tag tag
+        | _ -> failwith ("Could not process ref " ^ ref))
+  in
+
+  let process_refs refs =
+    let default_ref = Gitlab.Api.default_ref refs in
+    Gitlab.Api.all_refs refs
+    |> Gitlab.Api.Ref_map.bindings
+    |> List.map (fun (ref, commit) -> (process_ref ref, commit))
+    |> List.filter (is_not_stale ~default_ref)
+  in
+
+  let open Current.Syntax in
+  Current.component "CI refs"
+  |> let> () = Current.return () in
+     Gitlab.Api.refs gitlab repo_id
+     |> Current.Primitive.map_result (Result.map process_refs)
+
+module RefCommit = struct
+  type t = Pipeline.Source.t * Gitlab.Api.Commit.t
+
+  let pp f (source, commit) =
+    Fmt.pf f "%a: %a" Pipeline.Source.pp source Gitlab.Api.Commit.pp commit
+
+  let compare (s1, c1) (s2, c2) =
+    match Pipeline.Source.compare s1 s2 with
+    | 0 -> Gitlab.Api.Commit.compare c1 c2
+    | v -> v
+end
 
 let pipeline ~index ocluster gitlab =
-  [
-    ("master", ppl_master ~index ~ocluster ~gitlab);
-    ("ci", ppl_ci ~index ~ocluster ~gitlab);
-  ]
-  |> Current.all_labelled
+  ci_refs gitlab
+  |> Current.list_iter (module RefCommit) @@ fun src ->
+     let open Current.Syntax in
+     Current.component "pipeline"
+     |> let** source = Current.map fst src in
+        let commit =
+          Current.map (fun (_, commit) -> commit |> Gitlab.Api.Commit.id) src
+        in
+        let builder =
+          match ocluster with
+          | None -> Lib.Builder.make_docker
+          | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster
+        in
+        let task = Pipeline.v source commit |> Pipeline.pipeline ~builder in
+        Current.all
+          [
+            task.current;
+            Website.Index.update_state index ~source
+              ~commit:(Current.map Git.Commit_id.hash commit)
+              task.subtasks_status;
+          ]
+        |> Current.collapse ~key:"pipeline"
+             ~value:(Pipeline.Source.to_string source)
+             ~input:src
 
 let main current_config mode gitlab (`Ocluster_cap cap) =
   let ocluster =

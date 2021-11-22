@@ -1,14 +1,14 @@
 open Lib
-module StringMap = Map.Make (String)
+module Map = Pipeline.Source.Map
 
-type t = Task.subtask_node StringMap.t ref
+type t = (Task.subtask_node * string) Map.t ref
 
-let make () = ref StringMap.empty
+let make () = ref Map.empty
 
-let update_state state ~id new_state =
+let update_state (state : t) ~source ~commit new_state =
   let open Current.Syntax in
-  let+ id = id and+ new_state = new_state in
-  state := StringMap.add id new_state !state
+  let+ commit = commit and+ new_state = new_state in
+  state := Map.add source (new_state, commit) !state
 
 (* rendering *)
 
@@ -214,9 +214,10 @@ let rec get_job_tree ~uri_base (stage : Task.subtask_node) =
             ],
             run_time_info ))
 
-let list_pipelines ~state =
+let list_pipelines ~(state : t) =
   let open Tyxml_html in
-  let show_pipeline (name, ppl) =
+  let show_pipeline (src, ppl) =
+    let name = Pipeline.Source.to_string src in
     let _, run_time = get_job_tree ~uri_base:"" ppl in
     [
       h2
@@ -242,12 +243,13 @@ let list_pipelines ~state =
     h2 [ txt "Pipelines" ];
     ul
       (List.map
-         (fun binding -> li (show_pipeline binding))
-         (StringMap.bindings !state));
+         (fun (src, (binding, _)) -> li (show_pipeline (src, binding)))
+         (Map.bindings !state));
   ]
 
-let show_pipeline ~state name =
-  let ppl = StringMap.find name !state in
+let show_pipeline ~(state : t) src =
+  let ppl, _ = Map.find src !state in
+  let name = Pipeline.Source.to_string src in
   let stages =
     match ppl with
     | Task.Failure_allowed _ | Node { value = Item _; _ } -> assert false
@@ -256,6 +258,11 @@ let show_pipeline ~state name =
   let open Tyxml_html in
   [
     h1 [ txt ("Pipeline " ^ name) ];
+    div
+      [
+        txt "Link to ";
+        a ~a:[ a_href (Pipeline.Source.link_to src) ] [ txt "Gitlab" ];
+      ];
     h2 [ txt "Stages:" ];
     ul
       (List.map
@@ -273,8 +280,9 @@ let show_pipeline ~state name =
          stages);
   ]
 
-let show_pipeline_task ~state name stage_name =
-  let pipeline = StringMap.find name !state in
+let show_pipeline_task ~(state : t) src stage_name =
+  let pipeline, _ = Map.find src !state in
+  let name = Pipeline.Source.to_string src in
   let stages =
     match pipeline with
     | Task.Failure_allowed _ | Node { value = Item _; _ } -> assert false
@@ -308,12 +316,13 @@ let get_job_text job_id =
   let len = min max_log_chunk_size len in
   really_input_string ch (Int64.to_int len) ^ truncated
 
-let show_pipeline_task_job ~state name stage_name wildcard =
+let show_pipeline_task_job ~(state : t) src stage_name wildcard =
   let job_id =
     let wld = Routes.Parts.wildcard_match wildcard in
     String.sub wld 1 (String.length wld - 1)
   in
-  let pipeline = StringMap.find name !state in
+  let pipeline, _ = Map.find src !state in
+  let name = Pipeline.Source.to_string src in
   let stages =
     match pipeline with
     | Task.Failure_allowed _ | Node { value = Item _; _ } -> assert false
@@ -363,9 +372,12 @@ let internal_routes ~state =
   Routes.
     [
       empty @--> list_pipelines ~state;
-      (str /? nil) @--> show_pipeline ~state;
-      (str / str /? nil) @--> show_pipeline_task ~state;
-      (str / str /? wildcard) @--> show_pipeline_task_job ~state;
+      ( (str /? nil) @--> fun src ->
+        show_pipeline ~state (Pipeline.Source.of_string src) );
+      ( (str / str /? nil) @--> fun src task ->
+        show_pipeline_task ~state (Pipeline.Source.of_string src) task );
+      ( (str / str /? wildcard) @--> fun src task ->
+        show_pipeline_task_job ~state (Pipeline.Source.of_string src) task );
     ]
 
 let handle state wildcard_path =
