@@ -1,5 +1,3 @@
-open Lib
-
 let sanity_ci ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
   let open Current.Syntax in
   let spec =

@@ -33,7 +33,8 @@ module Website_description = struct
   module Node = struct
     type t = Lib.Task.task_metadata
 
-    let render_inline { Lib.Task.name; _ } = txt name
+    let render_inline { Lib.Task.name; skippable } =
+      if skippable then i [ txt name ] else txt name
 
     let map_status { Lib.Task.skippable; _ } =
       if not skippable then Fun.id
@@ -66,6 +67,8 @@ module Website_description = struct
           txt "Link to ";
           a ~a:[ a_href (Pipeline.Source.link_to t.source) ] [ txt "Gitlab" ];
         ]
+
+    let creation_date (t : t) = t.creation_date
   end
 
   let render_index () =
