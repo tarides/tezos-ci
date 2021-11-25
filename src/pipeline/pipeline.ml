@@ -165,7 +165,14 @@ let pipeline_stage ~stage_name ~gate ~builder ~analysis ~source stage =
   in
   (current, jobs)
 
-type metadata = { source : Source.t; commit : Current_git.Commit_id.t }
+type metadata = {
+  source : Source.t;
+  commit : Current_git.Commit_id.t;
+  creation_date : float;
+}
+
+let pipeline_run_id ~source ~commit =
+  Source.to_string source ^ "@" ^ Current_git.Commit_id.hash commit
 
 (* execute the pipeline *)
 let v ~builder source commit =
@@ -188,6 +195,10 @@ let v ~builder source commit =
       (Current.return (), [])
       stages
   in
+  let pipeline_run_id =
+    let+ commit = commit in
+    pipeline_run_id ~source ~commit
+  in
 
   let state =
     Current.collapse ~key:"stages_state_root" ~value:"root" ~input:analysis
@@ -205,7 +216,11 @@ let v ~builder source commit =
                 |> Current.collapse ~key:"stages_state" ~value:stage_name
                      ~input:analysis)
          |> Current.list_seq
-       and+ commit = commit in
-       { Current_web_pipelines.State.stages; metadata = { source; commit } }
+       and+ commit = commit
+       and+ creation_date = Creation_date.get pipeline_run_id in
+       {
+         Current_web_pipelines.State.stages;
+         metadata = { source; commit; creation_date };
+       }
   in
   Current_web_pipelines.Task.v ~current ~state

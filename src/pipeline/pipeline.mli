@@ -16,7 +16,11 @@ end
 
 open Current_web_pipelines
 
-type metadata = { source : Source.t; commit : Current_git.Commit_id.t }
+type metadata = {
+  source : Source.t;
+  commit : Current_git.Commit_id.t;
+  creation_date : float;
+}
 
 val v :
   builder:Lib.Builder.t ->
