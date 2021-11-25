@@ -2,6 +2,7 @@
  (public_name tezos-ci)
  (package tezos-ci)
  (name tezos_ci)
+ (modules tezos_ci)
  (libraries
   current
   current.fs
@@ -9,21 +10,40 @@
   current_git
   current_github
   current_web
-  current_docker
-  current_ocluster
   current_gitlab
   capnp-rpc-unix
   astring
   dockerfile
   cmdliner
-  fmt.tty
-  logs.fmt
   lwt
   lwt.unix
   obuilder-spec
   opam-file-format
   tezos-ci.analysis
   tezos-ci.pipeline
-  tezos-ci.website)
- (preprocess
-  (pps ppx_deriving_yojson ppx_deriving.ord)))
+  tezos-ci.logging
+  tezos-ci.website))
+
+(executable
+ (public_name tezos-ci-local)
+ (package tezos-ci)
+ (name tezos_ci_local)
+ (modules tezos_ci_local)
+ (libraries
+  current
+  current.fs
+  current.cache
+  current_git
+  current_github
+  current_web
+  current_gitlab
+  capnp-rpc-unix
+  astring
+  dockerfile
+  cmdliner
+  obuilder-spec
+  opam-file-format
+  tezos-ci.analysis
+  tezos-ci.pipeline
+  tezos-ci.logging
+  tezos-ci.website))
