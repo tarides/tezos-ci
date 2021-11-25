@@ -40,10 +40,6 @@ module Source = struct
   end)
 end
 
-type t = { source : Source.t; commit : Current_git.Commit_id.t Current.t }
-
-let v source commit = { source; commit }
-
 type mode =
   | Development
   | Development_manual
@@ -162,15 +158,17 @@ let pipeline_stage ~stage_name ~gate ~builder ~analysis ~source stage =
            | Yes -> task ~builder analysis)
   in
   let current =
-    List.map (function v -> v.Lib.Task.current) jobs
+    List.map Current_web_pipelines.Task.current jobs
     |> Current.all
     |> Current.collapse ~key:"stages" ~value:stage_name
          ~input:(Current.all [ analysis |> Current.ignore_value; gate ])
   in
   (current, jobs)
 
+type metadata = { source : Source.t; commit : Current_git.Commit_id.t }
+
 (* execute the pipeline *)
-let pipeline ~builder { source; commit } =
+let v ~builder source commit =
   let open Current.Syntax in
   let analysis = Analysis.Analyse.v (Current_git.fetch commit) in
   let current, pages =
@@ -192,17 +190,22 @@ let pipeline ~builder { source; commit } =
   in
 
   let state =
-    pages
-    |> List.rev
-    |> List.map (fun (stage_name, substages) ->
-           List.map (fun task -> task.Lib.Task.subtasks_status) substages
-           |> Current.list_seq
-           |> Current.map (Lib.Task.group ~name:stage_name)
-           |> Current.collapse ~key:"stages_state" ~value:stage_name
-                ~input:analysis)
-    |> Current.list_seq
-    |> Current.map (Lib.Task.group ~name:"pipeline")
-    |> Current.collapse ~key:"stages_state_root" ~value:"root" ~input:analysis
+    Current.collapse ~key:"stages_state_root" ~value:"root" ~input:analysis
+    @@ let+ stages =
+         pages
+         |> List.rev
+         |> List.map (fun (stage_name, substages) ->
+                List.map Current_web_pipelines.Task.state substages
+                |> Current.list_seq
+                |> Current.map (fun jobs ->
+                       {
+                         Current_web_pipelines.State.jobs;
+                         metadata = stage_name;
+                       })
+                |> Current.collapse ~key:"stages_state" ~value:stage_name
+                     ~input:analysis)
+         |> Current.list_seq
+       and+ commit = commit in
+       { Current_web_pipelines.State.stages; metadata = { source; commit } }
   in
-
-  Lib.Task.v (Current.ignore_value current) state
+  Current_web_pipelines.Task.v ~current ~state

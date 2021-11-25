@@ -14,7 +14,18 @@ module Source : sig
   module Map : Map.S with type key = t
 end
 
-type t
+open Current_web_pipelines
 
-val v : Source.t -> Current_git.Commit_id.t Current.t -> t
-val pipeline : builder:Lib.Builder.t -> t -> Lib.Task.t
+type metadata = { source : Source.t; commit : Current_git.Commit_id.t }
+
+val v :
+  builder:Lib.Builder.t ->
+  Source.t ->
+  Current_git.Commit_id.t Current.t ->
+  ( unit,
+    ( Current_ocluster.Artifacts.t option,
+      Lib.Task.task_metadata,
+      string,
+      metadata )
+    State.pipeline )
+  Task.t

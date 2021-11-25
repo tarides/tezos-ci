@@ -1,4 +1,9 @@
 (library
  (public_name tezos-ci.website)
  (name website)
- (libraries current tezos-ci.stages tezos-ci.pipeline routes current_web magic-mime))
+ (libraries
+  obuilder-spec
+  tezos-ci.analysis
+  tezos-ci.lib
+  tezos-ci.stages
+  tezos-ci.pipeline))

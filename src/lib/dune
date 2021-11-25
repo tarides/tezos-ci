@@ -6,6 +6,7 @@
   tezos-ci.analysis
   current_docker
   current.fs
-  current_ocluster)
+  current_ocluster
+  current-web-pipelines)
  (preprocess
   (pps ppx_deriving_yojson ppx_deriving.ord)))

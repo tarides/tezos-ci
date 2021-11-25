@@ -83,14 +83,10 @@ let pipeline ~index ocluster gitlab =
           | None -> Lib.Builder.make_docker
           | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster
         in
-        let task = Pipeline.v source commit |> Pipeline.pipeline ~builder in
-        Current.all
-          [
-            task.current;
-            Website.Index.update_state index ~source
-              ~commit:(Current.map Git.Commit_id.hash commit)
-              task.subtasks_status;
-          ]
+        let task = Pipeline.v ~builder source commit in
+        let current = Current_web_pipelines.Task.current task in
+        let state = Current_web_pipelines.Task.state task in
+        Current.all [ current; Website.update_state index state ]
         |> Current.collapse ~key:"pipeline"
              ~value:(Pipeline.Source.to_string source)
              ~input:src
@@ -107,15 +103,17 @@ let main current_config mode gitlab (`Ocluster_cap cap) =
         Current_ocluster.v connection)
       cap
   in
-  let index = Website.Index.make () in
+  let index = Website.make () in
   let engine =
     Current.Engine.create ~config:current_config (fun () ->
         pipeline ~index ocluster gitlab)
   in
   let site =
     let routes =
-      Routes.(s "webhooks" / s "gitlab" /? nil @--> Gitlab.webhook ~webhook_secret:(Gitlab.Api.webhook_secret gitlab)) ::
-      Website.Index.routes index
+      Routes.(
+        (s "webhooks" / s "gitlab" /? nil)
+        @--> Gitlab.webhook ~webhook_secret:(Gitlab.Api.webhook_secret gitlab))
+      :: Website.routes index
       @ Current_web.routes engine
     in
     Current_web.Site.(v ~has_role:allow_all) ~name:program_name routes
