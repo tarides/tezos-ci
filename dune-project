@@ -24,7 +24,7 @@
    (>= 0.3))
   current_web
   current_git
-  current_github
+  current_gitlab
   current_docker
   current_ocluster
   capnp-rpc-unix

@@ -3,4 +3,4 @@
 	url = https://github.com/TheLortex/ocluster
 [submodule "ocurrent"]
 	path = ocurrent
-	url = https://github.com/TheLortex/ocurrent.git
+	url = https://github.com/tmcgilchrist/ocurrent.git
