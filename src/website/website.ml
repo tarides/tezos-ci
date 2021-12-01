@@ -75,16 +75,30 @@ module Website_description = struct
     open Pipeline
 
     module Group = struct
-      type t = Tezos
+      type t = Merge_request | Branch | Tag | Other
 
-      let id Tezos = "tz"
-      let to_string Tezos = "Tezos"
+      let id = function
+        | Merge_request -> "mr"
+        | Branch -> "b"
+        | Tag -> "t"
+        | Other -> "o"
+
+      let to_string = function
+        | Merge_request -> "Merge request"
+        | Branch -> "Branch"
+        | Tag -> "Tag"
+        | Other -> "Other"
     end
 
     module Source = struct
       include Source
 
-      let group _ = Group.Tezos
+      let group = function
+        | Schedule _ -> Group.Other
+        | Branch _ -> Branch
+        | Tag _ -> Tag
+        | Merge_request _ -> Merge_request
+
       let id = Source.id
     end
 
