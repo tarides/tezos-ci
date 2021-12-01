@@ -61,7 +61,7 @@ module RefCommit = struct
   type t = Pipeline.Source.t * Gitlab.Api.Commit.t
 
   let pp f (source, commit) =
-    Fmt.pf f "%a: %a" Pipeline.Source.pp source Gitlab.Api.Commit.pp commit
+    Fmt.pf f "%s: %a" (Pipeline.Source.id source) Gitlab.Api.Commit.pp commit
 
   let compare (s1, c1) (s2, c2) =
     match Pipeline.Source.compare s1 s2 with

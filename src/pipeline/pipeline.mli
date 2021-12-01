@@ -5,10 +5,11 @@ module Source : sig
     | Tag of string
     | Merge_request of { from_branch : string; to_branch : string }
 
-  val pp : t Fmt.t
   val compare : t -> t -> int
   val to_string : t -> string
-  val of_string : string -> t
+  val id : t -> string
+  val marshal : t -> string
+  val unmarshal : string -> t
   val link_to : t -> string
 
   module Map : Map.S with type key = t
@@ -16,11 +17,7 @@ end
 
 open Current_web_pipelines
 
-type metadata = {
-  source : Source.t;
-  commit : Current_git.Commit_id.t;
-  creation_date : float;
-}
+type metadata = { source : Source.t; commit : Current_git.Commit_id.t }
 
 val v :
   builder:Lib.Builder.t ->

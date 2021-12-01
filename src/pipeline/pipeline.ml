@@ -5,16 +5,16 @@ module Source = struct
     | Tag of string
     | Merge_request of { from_branch : string; to_branch : string }
 
-  let pp f = function
-    | Schedule _ -> Fmt.pf f "schedule"
-    | Branch b -> Fmt.pf f "branch:%s" b
-    | Tag t -> Fmt.pf f "tag:%s" t
+  let id = function
+    | Schedule _ -> Fmt.str "schedule"
+    | Branch b -> Fmt.str "branch:%s" b
+    | Tag t -> Fmt.str "tag:%s" t
     | Merge_request { from_branch; to_branch } ->
-        Fmt.pf f "mr:%s:%s" from_branch to_branch
+        Fmt.str "mr:%s:%s" from_branch to_branch
 
-  let to_string = Fmt.to_to_string pp
+  let marshal = id
 
-  let of_string v =
+  let unmarshal v =
     match String.split_on_char ':' v with
     | [ "schedule" ] -> failwith "not implemented"
     | [ "branch"; branch ] -> Branch branch
@@ -22,6 +22,13 @@ module Source = struct
     | [ "mr"; from_branch; to_branch ] ->
         Merge_request { from_branch; to_branch }
     | _ -> failwith "unknown source"
+
+  let to_string = function
+    | Schedule _ -> Fmt.str "Schedule"
+    | Branch b -> Fmt.str "Branch %s" b
+    | Tag t -> Fmt.str "Tag %s" t
+    | Merge_request { from_branch; to_branch } ->
+        Fmt.str "MR #%s on %s" from_branch to_branch
 
   let link_to = function
     | Schedule _ -> ""
@@ -165,14 +172,7 @@ let pipeline_stage ~stage_name ~gate ~builder ~analysis ~source stage =
   in
   (current, jobs)
 
-type metadata = {
-  source : Source.t;
-  commit : Current_git.Commit_id.t;
-  creation_date : float;
-}
-
-let pipeline_run_id ~source ~commit =
-  Source.to_string source ^ "@" ^ Current_git.Commit_id.hash commit
+type metadata = { source : Source.t; commit : Current_git.Commit_id.t }
 
 (* execute the pipeline *)
 let v ~builder source commit =
@@ -195,10 +195,6 @@ let v ~builder source commit =
       (Current.return (), [])
       stages
   in
-  let pipeline_run_id =
-    let+ commit = commit in
-    pipeline_run_id ~source ~commit
-  in
 
   let state =
     Current.collapse ~key:"stages_state_root" ~value:"root" ~input:analysis
@@ -216,11 +212,7 @@ let v ~builder source commit =
                 |> Current.collapse ~key:"stages_state" ~value:stage_name
                      ~input:analysis)
          |> Current.list_seq
-       and+ commit = commit
-       and+ creation_date = Creation_date.get pipeline_run_id in
-       {
-         Current_web_pipelines.State.stages;
-         metadata = { source; commit; creation_date };
-       }
+       and+ commit = commit in
+       { Current_web_pipelines.State.stages; metadata = { source; commit } }
   in
   Current_web_pipelines.Task.v ~current ~state

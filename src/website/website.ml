@@ -28,20 +28,37 @@ module Website_description = struct
               ]
             [ txt "⤵️ artifacts " ]
       | None -> txt ""
+
+    (* TODO: provide marshalling in Current_ocluster.Artifacts.t *)
+    let marshal v = Marshal.to_string v []
+    let unmarshal v = Marshal.from_string v 0
   end
 
   module Node = struct
-    type t = Lib.Task.task_metadata
+    open Lib.Task
 
-    let render_inline { Lib.Task.name; skippable } =
+    type t = task_metadata
+
+    let render_inline { name; skippable } =
       if skippable then i [ txt name ] else txt name
 
-    let map_status { Lib.Task.skippable; _ } =
+    let map_status { skippable; _ } =
       if not skippable then Fun.id
       else function
         | Error (`Msg _) -> Error `Skipped_failure
         | Error `Cancelled -> Error `Skipped_failure
         | v -> v
+
+    let marshal { name; skippable } =
+      `Assoc [ ("name", `String name); ("skippable", `Bool skippable) ]
+      |> Yojson.Safe.to_string
+
+    let unmarshal str =
+      let json = Yojson.Safe.from_string str in
+      let open Yojson.Safe.Util in
+      let name = member "name" json |> to_string in
+      let skippable = member "skippable" json |> to_bool in
+      { name; skippable }
   end
 
   module Stage = struct
@@ -50,25 +67,64 @@ module Website_description = struct
     let id name = name
     let render_inline name = txt name
     let render _ = txt ""
+    let marshal = Fun.id
+    let unmarshal = Fun.id
   end
 
   module Pipeline = struct
-    type t = Pipeline.metadata
+    open Pipeline
 
-    let id (t : t) = Pipeline.Source.to_string t.source
+    module Group = struct
+      type t = Tezos
+
+      let id Tezos = "tz"
+      let to_string Tezos = "Tezos"
+    end
+
+    module Source = struct
+      include Source
+
+      let group _ = Group.Tezos
+      let id = Source.id
+    end
+
+    type t = metadata
+
+    let id t = Current_git.Commit_id.hash t.commit
+    let source t = t.source
+
+    let marshal { source; commit } =
+      `Assoc
+        [
+          ("repo", `String (Current_git.Commit_id.repo commit));
+          ("hash", `String (Current_git.Commit_id.hash commit));
+          ("gref", `String (Current_git.Commit_id.gref commit));
+          ("source", `String (Source.marshal source));
+        ]
+      |> Yojson.Safe.to_string
+
+    let unmarshal str =
+      let json = Yojson.Safe.from_string str in
+      let open Yojson.Safe.Util in
+      let repo = member "repo" json |> to_string in
+      let hash = member "hash" json |> to_string in
+      let gref = member "gref" json |> to_string in
+      let source = member "source" json |> to_string in
+      {
+        source = Source.unmarshal source;
+        commit = Current_git.Commit_id.v ~repo ~gref ~hash;
+      }
 
     let render_inline (t : t) =
       let commit_hash = String.sub (Current_git.Commit_id.hash t.commit) 0 7 in
-      txt (id t ^ " @" ^ commit_hash)
+      txt ("@" ^ commit_hash)
 
     let render (t : t) =
       div
         [
           txt "Link to ";
-          a ~a:[ a_href (Pipeline.Source.link_to t.source) ] [ txt "Gitlab" ];
+          a ~a:[ a_href (Source.link_to t.source) ] [ txt "Gitlab" ];
         ]
-
-    let creation_date (t : t) = t.creation_date
   end
 
   let render_index () =
