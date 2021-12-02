@@ -8,7 +8,6 @@
   current.fs
   current.cache
   current_git
-  current_github
   current_web
   current_gitlab
   capnp-rpc-unix
@@ -34,7 +33,6 @@
   current.fs
   current.cache
   current_git
-  current_github
   current_web
   current_gitlab
   capnp-rpc-unix
