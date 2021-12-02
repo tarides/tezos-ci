@@ -20,7 +20,7 @@ A translation of Tezos' Gitlab CI (https://gitlab.com/tezos/tezos/-/tree/master/
 ### In OCluster
 
 ```
-dune exec -- tezos-ci --ocluster-cap <ocluster_capability_file>
+dune exec -- tezos-ci --ocluster-cap <ocluster_capability_file> --gitlab-token-file=<GITLAB_TOKEN_FILE> --gitlab-webhook-secret-file=<WEBHOOK_SECRET_FILE>
 ```
 
 ### Locally using docker
