@@ -1,0 +1,28 @@
+version: '3.1'
+volumes:
+  data:
+  capnp-secrets:
+secrets:
+  tezos-ci-token:
+    external: true
+  tezos-ci-submission-cap:
+    external: true
+  tezos-ci-webhook-secret:
+    external: true
+services:
+  ci:
+    image: tezos-ci-service
+    command: --ocluster-cap /run/secrets/tezos-ci-submission-cap --gitlab-token-file /run/secrets/tezos-ci-token --gitlab-webhook-secret-file /run/secrets/tezos-ci-webhook-secret
+    ports:
+      - '80:8080'
+    volumes:
+      - 'data:/var/lib/ocurrent'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    secrets:
+      - 'tezos-ci-token'
+      - 'tezos-ci-webhook-secret'
+      - 'tezos-ci-submission-cap'
+    sysctls:
+      - 'net.ipv4.tcp_keepalive_time=60'
+    # networks:
+    #   - infra_default
