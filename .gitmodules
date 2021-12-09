@@ -3,7 +3,7 @@
 	url = https://github.com/TheLortex/ocluster
 [submodule "ocurrent"]
 	path = vendor/ocurrent
-	url = https://github.com/tmcgilchrist/ocurrent.git
+	url = https://github.com/ocurrent/ocurrent.git
 [submodule "vendor/current-web-pipelines"]
 	path = vendor/current-web-pipelines
 	url = https://github.com/tarides/current-web-pipelines.git

@@ -149,8 +149,8 @@ module Website_description = struct
           [
             txt "Source code on Github: ";
             a
-              ~a:[ a_href "https://github.com/TheLortex/tezos-ci" ]
-              [ txt "TheLortex/tezos-ci" ];
+              ~a:[ a_href "https://github.com/ocurrent/tezos-ci" ]
+              [ txt "ocurrent/tezos-ci" ];
           ];
       ]
 end
