@@ -30,6 +30,8 @@
   capnp-rpc-unix
   obuilder-spec
   opam-file-format
+  (ppx_deriving (>= 5.2.1))
+  (ppx_deriving_yojson (>= 3.6.1))
   astring
   fmt
   lwt
