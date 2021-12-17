@@ -42,6 +42,7 @@ let v (tezos_repository : Analysis.Tezos_repository.t) =
             ~dst:"./";
           (* TODO: copy the subset of /src that is actually useful *)
           copy ~from:(`Build "build_src") [ "/tezos/src" ] ~dst:"src";
+          copy ~from:(`Build "build_src") [ "/tezos/tezt" ] ~dst:"tezt";
           copy ~from:(`Build "build_src") [ "/tezos/vendors" ] ~dst:"vendors";
           copy ~from:(`Build "build_src") [ "/tezos/.git" ] ~dst:".git";
           copy ~from:(`Build "build_src")
