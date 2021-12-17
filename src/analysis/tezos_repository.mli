@@ -11,7 +11,10 @@ module Active_protocol : sig
 end
 
 module Version : sig
-  type t = { build_deps_image_version : string }
+  type t = {
+    build_deps_image_version : string;
+    recommended_node_version : string;
+  }
 end
 
 type t = {

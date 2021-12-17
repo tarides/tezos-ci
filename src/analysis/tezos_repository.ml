@@ -50,21 +50,36 @@ module Active_protocol = struct
 end
 
 module Version = struct
-  type t = { build_deps_image_version : string } [@@deriving yojson]
+  type t = {
+    build_deps_image_version : string;
+    recommended_node_version : string;
+  }
+  [@@deriving yojson]
 
   let parse () =
     let version_path = Fpath.v "scripts/version.sh" in
     let* version_file_content = Bos.OS.File.read_lines version_path in
-    version_file_content
-    |> List.find_map (fun line ->
-           match String.split_on_char '=' line with
-           | [ "export opam_repository_tag"; build_deps_image_version ]
-           | [ "opam_repository_tag"; build_deps_image_version ] ->
-               Some { build_deps_image_version }
-           | _ -> None)
-    |> Option.to_result
-         ~none:
-           (`Msg "Failed to find 'opam_repository_tag' in 'scripts/version.sh'")
+    let result =
+      version_file_content
+      |> List.fold_left
+           (fun acc line ->
+             match String.split_on_char '=' line with
+             | [ "export opam_repository_tag"; build_deps_image_version ] ->
+                 { acc with build_deps_image_version }
+             | [ "export recommended_node_version"; recommended_node_version ]
+               ->
+                 { acc with recommended_node_version }
+             | _ -> acc)
+           { build_deps_image_version = ""; recommended_node_version = "" }
+    in
+    if result.build_deps_image_version == "" then
+      Error
+        (`Msg "Failed to find 'opam_repository_tag' in 'scripts/version.sh'")
+    else if result.recommended_node_version == "" then
+      Error
+        (`Msg
+          "Failed to find 'recommended_node_version' in 'scripts/version.sh'")
+    else Ok result
 end
 
 module Current_git = struct

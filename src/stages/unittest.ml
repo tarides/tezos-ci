@@ -6,6 +6,12 @@ let template ?(extra_script = []) ~targets analysis =
   let from =
     Variables.docker_image_runtime_build_test_dependencies analysis.version
   in
+  let make =
+    match targets with
+    | [] -> []
+    | targets ->
+        [ Obuilder_spec.run "opam exec -- make %s" (String.concat " " targets) ]
+  in
   Obuilder_spec.(
     stage ~from
       ~child_builds:[ ("build", build); ("src", Lib.Fetch.spec analysis) ]
@@ -14,11 +20,12 @@ let template ?(extra_script = []) ~targets analysis =
          workdir "/home/tezos/src";
          copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
          copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
-         run ". ./scripts/version.sh";
-         (* hmmmmm *)
+         env "recommended_node_version"
+           analysis.version.recommended_node_version;
+         (* TODO *)
          env "ARCH" "x86_64";
-         run "opam exec -- make %s" (String.concat " " targets);
        ]
+      @ make
       @ extra_script))
 
 let targets =
@@ -48,7 +55,13 @@ let targets =
     ("unit:non-proto", [ "test-nonproto-unit" ], None);
     ( "unit:js_components",
       [],
-      Some [ Obuilder_spec.run "opam exec -- dune build @runtest_js" ] );
+      Some
+        Obuilder_spec.
+          [
+            run
+              ". ./scripts/install_build_deps.js.sh && opam exec -- make \
+               test-js";
+          ] );
     ( "unit:protocol_compiles",
       [],
       Some
