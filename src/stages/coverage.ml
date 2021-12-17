@@ -8,7 +8,7 @@ let target_to_string = function
   | Python_alpha -> "test-python-alpha"
   | Tezt_coverage -> "test-tezt-coverage"
 
-let template ~target analysis =
+let template analysis =
   let build = Build.v analysis in
   let from =
     Variables.docker_image_runtime_build_test_dependencies analysis.version
@@ -21,22 +21,18 @@ let template ~target analysis =
         workdir "/tezos/";
         copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
         copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
-        run ". ./scripts/version.sh";
         env "VIRTUAL_ENV" "/home/tezos/.venv";
         env "PATH" "$VIRTUAL_ENV/bin:$PATH";
         env "COVERAGE_OPTION" "--instrument-with bisect_ppx";
         env "BISECT_FILE" "/tezos/_coverage_output/";
-        run "opam exec -- make %s || true" (target_to_string target);
+        env "COVERAGE_OUTPUT" "_coverage_output";
         run "opam exec -- make coverage-report";
-        run "opam exec -- make coverage-report-summary";
-        run "tail -n 100 _coverage_report/*";
+        run
+          {|opam exec -- make coverage-report-summary | sed 's@Coverage: [[:digit:]]\+/[[:digit:]]\+ (\(.*%%\))@Coverage: \1@|};
+        run "opam exec -- make coverage-report-cobertura";
       ])
+  |> Current_ocluster.Artifacts.extract ~folder:"/tezos/_coverage_report/"
 
 let test_coverage ~builder (analysis : Tezos_repository.t Current.t) =
-  [ Unit; Python_alpha; Tezt_coverage ]
-  |> List.map (fun target ->
-         let label =
-           Fmt.str "integration:test_coverage:%s" (target_to_string target)
-         in
-         Builder.build builder ~label (Current.map (template ~target) analysis))
-  |> Task.all ~name:(Current.return "integration:test_coverage")
+  let label = Fmt.str "integration:test_coverage" in
+  Builder.build builder ~label (Current.map template analysis)
