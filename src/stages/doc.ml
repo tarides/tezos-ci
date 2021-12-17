@@ -14,6 +14,9 @@ let build ~builder (analysis : Tezos_repository.t Current.t) =
           user ~uid:100 ~gid:100;
           workdir "/home/tezos";
           copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
+          run
+            "sed -i 's@:file:.*[.]html@:file: /dev/null@' \
+             ./docs/*/cli-commands.rst";
           run "opam exec -- make -C docs html";
         ])
     |> Current_ocluster.Artifacts.extract ~folder:"/home/tezos/docs"

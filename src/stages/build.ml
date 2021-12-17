@@ -56,10 +56,11 @@ let v (tezos_repository : Analysis.Tezos_repository.t) =
           env "DUNE_CACHE_TRANSPORT" "direct";
           run ~cache "opam exec -- dune build @runtest_dune_template";
           (* 2. Actually build and extract _build/default/src/lib_protocol_compiler/main_native.exe from the cached folder *)
-          run ~cache
-            "opam exec -- make all build-test && mkdir dist && cp --parents \
-             tezos-* src/proto_*/parameters/*.json \
-             _build/default/src/lib_protocol_compiler/main_native.exe dist";
+          run ~cache "opam exec -- make all build-test";
+          run ~cache "opam exec -- dune build src/bin_tps_evaluation";
+          run
+            "mkdir dist && cp --parents tezos-* src/proto_*/parameters/*.json \
+             _build/default/src/lib_protocol_compiler/bin/main_native.exe dist";
         ])
   in
   Obuilder_spec.(
