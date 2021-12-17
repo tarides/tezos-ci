@@ -19,7 +19,6 @@ let build ~builder (analysis : Tezos_repository.t Current.t) =
              ./docs/*/cli-commands.rst";
           run "opam exec -- make -C docs html";
         ])
-    |> Current_ocluster.Artifacts.extract ~folder:"/home/tezos/docs"
   in
   Lib.Builder.build ~label:"documentation:build" builder spec
 
