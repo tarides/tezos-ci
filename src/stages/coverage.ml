@@ -31,7 +31,6 @@ let template analysis =
           {|opam exec -- make coverage-report-summary | sed 's@Coverage: [[:digit:]]\+/[[:digit:]]\+ (\(.*%%\))@Coverage: \1@|};
         run "opam exec -- make coverage-report-cobertura";
       ])
-  |> Current_ocluster.Artifacts.extract ~folder:"/tezos/_coverage_report/"
 
 let test_coverage ~builder (analysis : Tezos_repository.t Current.t) =
   let label = Fmt.str "integration:test_coverage" in
