@@ -1,7 +1,7 @@
 open Analysis
 open Lib
 
-let tezt_job_total = 3
+let tezt_job_total = 25
 
 let template ~tezt_job analysis =
   let build = Build.v analysis in
@@ -22,7 +22,7 @@ let template ~tezt_job analysis =
         run
           "opam exec -- dune exec tezt/tests/main.exe -- --color \
            --log-buffer-size 5000 --log-file tezt.log --global-timeout 3300 \
-           --junit tezt-junit.xml --from-record tezt/test-results.json --job \
+           --junit tezt-junit.xml --from-record tezt/records --job \
            %d/%d --record tezt-results-%d.json"
           tezt_job tezt_job_total tezt_job;
         run "cat tezt.log";

@@ -38,4 +38,5 @@
   logs
   cmdliner
   dockerfile
-  conf-libev))
+  conf-libev)
+ (conflicts (gitlab-unix (= "0.1.1"))))

@@ -1,6 +1,8 @@
 open Analysis
 open Lib
 
+let tezt_job_total = 25
+
 let template ~script analysis =
   let build = Build.v analysis in
   let from =
@@ -23,19 +25,11 @@ let template ~script analysis =
         run "%s; exit_code=$?; tail -n 100 tmp/*; exit $exit_code" script;
       ])
 
-let slow_test ~protocol_id test_name =
+let pytest ~tezt_job =
   let script =
     Fmt.str
-      {|opam exec -- poetry run pytest "tests_%s/test_%s.py" --exitfirst -m "slow" -s --log-dir=tmp "--junitxml=reports/%s_%s.xml" 2>&1 | tee "tmp/%s_%s.out" | tail |}
-      protocol_id test_name protocol_id test_name protocol_id test_name
-  in
-  template ~script
-
-let fast_test ~protocol_id =
-  let script =
-    Fmt.str
-      {|opam exec -- poetry run pytest "tests_%s/" --exitfirst -m "not slow" -s --log-dir=tmp "--junitxml=reports/%s_batch.xml" 2>&1 | tee "tmp/%s_batch.out" | tail |}
-      protocol_id protocol_id protocol_id
+      {|opam exec -- poetry run pytest --exitfirst --prev-junit-xml test-results.xml --job %d/%d --color=yes --log-dir=tmp "--junitxml=reports/report_%d_%d.xml" --timeout 1800 2>&1 | tee "tmp/test_%d.out" | tail |}
+      tezt_job tezt_job_total tezt_job tezt_job_total tezt_job
   in
   template ~script
 
@@ -47,65 +41,18 @@ let examples =
   in
   template ~script
 
-let job ~(analysis : Tezos_repository.t Current.t) ~builder
-    (protocol : Tezos_repository.Active_protocol.t Current.t) =
-  let open Current.Syntax in
-  let slow_tests =
-    let+ protocol = protocol in
-    protocol.slow_tests
-  in
-
-  let slow_tests =
-    Task.list_iter ~collapse_key:"slow-test"
-      (module struct
-        type t = string
-
-        let pp = Fmt.string
-        let compare = String.compare
-      end)
-      (fun name ->
-        let spec =
-          let+ name = name and+ protocol = protocol and+ analysis = analysis in
-          slow_test ~protocol_id:protocol.id name analysis
-        in
-        let name =
-          let+ protocol = protocol and+ name = name in
-          "integration:test_" ^ protocol.id ^ "_" ^ name
-        in
-        Lib.Builder.build builder ~name ~label:"integration:test" spec)
-      slow_tests
-  in
-  let batch_test =
-    let+ protocol = protocol and+ analysis = analysis in
-    fast_test ~protocol_id:protocol.id analysis
-  in
-  let name =
-    let+ protocol = protocol in
-    protocol.name
-  in
-  Task.all ~name
-    [
-      slow_tests;
-      (let name =
-         let+ protocol = protocol in
-         protocol.id ^ "_batch"
-       in
-       Lib.Builder.build builder ~name ~label:"integration:batch" batch_test);
-    ]
-
 let all ~builder (analysis : Tezos_repository.t Current.t) =
   let open Current.Syntax in
-  let active_protocols =
-    let+ analysis = analysis in
-    analysis.active_protocols
-  in
   let protocol_tests =
-    Task.list_iter ~collapse_key:"active-protocols"
-      (module Tezos_repository.Active_protocol)
-      (job ~analysis ~builder) active_protocols
+    List.init tezt_job_total (fun n -> n + 1) (* 1, 2, ..., tezt_job_total *)
+    |> List.map (fun n ->
+           let label = Fmt.str "integration:pytest:%d" n in
+           Lib.Builder.build builder ~label
+             (Current.map (pytest ~tezt_job:n) analysis))
+    |> Task.all ~name:(Current.return "integration:pytest")
   in
   let examples =
     let examples = Current.map examples analysis in
-    Lib.Builder.build ~label:"integration:examples" builder examples
+    Lib.Builder.build ~label:"integration:pytest_examples" builder examples
   in
   Task.all ~name:(Current.return "intgeration") [ protocol_tests; examples ]
