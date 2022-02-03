@@ -14,10 +14,15 @@ let reporter =
   in
   { Logs.report }
 
-let init ?(level = Logs.Info) () =
-  Fmt_tty.setup_std_outputs ();
-  Logs.set_level (Some level);
+let init style_renderer level =
+  Fmt_tty.setup_std_outputs ?style_renderer ();
+  Logs.set_level level;
   Logs.set_reporter reporter
+
+let cmdliner =
+  let open Cmdliner in
+  let docs = Manpage.s_common_options in
+  Term.(const init $ Fmt_cli.style_renderer ~docs () $ Logs_cli.level ~docs ())
 
 let run x =
   match Lwt_main.run x with
