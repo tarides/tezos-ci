@@ -3,7 +3,7 @@
 (name tezos-ci)
 
 (generate_opam_files true)
-
+(formatting disabled)
 ; Edit these to give your project's URL, authors and maintainers:
 
 (source
