@@ -38,7 +38,7 @@ let ci_refs gitlab =
           { from_branch = string_of_int number; to_branch = "master" }
     | `Ref ref -> (
         match String.split_on_char '/' ref with
-        | [ "refs"; "heads"; branch ] -> Pipeline.Source.Branch branch
+        | "refs" :: "heads" :: branch -> Pipeline.Source.Branch (String.concat "/" branch)
         | [ "refs"; "tags"; tag ] -> Pipeline.Source.Tag tag
         | _ -> failwith ("Could not process ref " ^ ref))
   in
