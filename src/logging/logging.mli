@@ -1,5 +1,4 @@
-val init : ?level:Logs.level -> unit -> unit
-(** [init ~level ()] setups logs with given [level] *)
+val cmdliner : unit Cmdliner.Term.t
 
 val run :
   (unit, [< `Msg of string ]) result Lwt.t -> (unit, [> `Msg of string ]) result

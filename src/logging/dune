@@ -1,4 +1,4 @@
 (library
  (public_name tezos-ci.logging)
  (name logging)
- (libraries logs fmt lwt fmt.tty logs.fmt lwt.unix))
+ (libraries cmdliner fmt fmt.cli fmt.tty logs logs.cli logs.fmt lwt lwt.unix))
