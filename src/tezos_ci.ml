@@ -126,6 +126,7 @@ let main current_config mode gitlab (`Ocluster_cap cap) =
          Current_web.run ~mode site;
          (* Optional: provides a web UI *)
        ])
+  |> Result.map_error (fun (`Msg msg) -> msg)
 
 (* Command-line parsing *)
 
@@ -142,12 +143,12 @@ let ocluster_cap =
 
 let cmd =
   let doc = "an OCurrent pipeline" in
-  ( Term.(
-      const main
-      $ Current.Config.cmdliner
-      $ Current_web.cmdliner
-      $ Current_gitlab.Api.cmdliner
-      $ ocluster_cap),
-    Term.info program_name ~doc )
+  let info = Cmd.info program_name ~doc in
+  Cmd.v info Term.(
+    const main
+    $ Current.Config.cmdliner
+    $ Current_web.cmdliner
+    $ Current_gitlab.Api.cmdliner
+    $ ocluster_cap)
 
-let () = Term.(exit @@ eval cmd)
+let () = exit (Cmd.eval_result cmd)
