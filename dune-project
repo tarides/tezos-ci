@@ -36,7 +36,7 @@
   fmt
   lwt
   logs
-  cmdliner
+  (cmdliner (>= 1.1.0))
   dockerfile
   conf-libev)
  (conflicts (gitlab-unix (= "0.1.1"))))

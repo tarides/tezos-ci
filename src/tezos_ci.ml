@@ -2,7 +2,6 @@ module Git = Current_git
 module Gitlab = Current_gitlab
 module Docker = Current_docker.Default
 
-let () = Logging.init ()
 let program_name = "tezos-ci"
 
 let repo_id =
@@ -91,7 +90,7 @@ let pipeline ~index ocluster gitlab =
              ~value:(Pipeline.Source.to_string source)
              ~input:src
 
-let main current_config mode gitlab (`Ocluster_cap cap) =
+let main () current_config mode gitlab (`Ocluster_cap cap) =
   let ocluster =
     Option.map
       (fun cap ->
@@ -126,6 +125,7 @@ let main current_config mode gitlab (`Ocluster_cap cap) =
          Current_web.run ~mode site;
          (* Optional: provides a web UI *)
        ])
+  |> Result.map_error (fun (`Msg msg) -> msg)
 
 (* Command-line parsing *)
 
@@ -136,18 +136,20 @@ let named f = Cmdliner.Term.(app (const f))
 let ocluster_cap =
   Arg.value
   @@ Arg.opt Arg.(some Capnp_rpc_unix.sturdy_uri) None
-  @@ Arg.info ~doc:"The ocluster submission capability file" ~docv:"FILE"
+  @@ Arg.info ~doc:"The OCluster submission capability file." ~docv:"FILE"
        [ "ocluster-cap" ]
   |> named (fun x -> `Ocluster_cap x)
 
 let cmd =
   let doc = "an OCurrent pipeline" in
-  ( Term.(
-      const main
-      $ Current.Config.cmdliner
-      $ Current_web.cmdliner
-      $ Current_gitlab.Api.cmdliner
-      $ ocluster_cap),
-    Term.info program_name ~doc )
+  let sdocs = Manpage.s_common_options in
+  let info = Cmd.info program_name ~doc ~sdocs in
+  Cmd.v info Term.(
+        const main
+        $ Logging.cmdliner
+    $ Current.Config.cmdliner
+    $ Current_web.cmdliner
+    $ Current_gitlab.Api.cmdliner
+    $ ocluster_cap)
 
-let () = Term.(exit @@ eval cmd)
+let () = exit (Cmd.eval_result cmd)
