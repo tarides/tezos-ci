@@ -1,6 +1,6 @@
 ## Tezos-CI
 
-A translation of Tezos' Gitlab CI (https://gitlab.com/tezos/tezos/-/tree/master/.gitlab/ci) in the ocurrent world.
+A translation of Tezos' [Gitlab CI](https://gitlab.com/tezos/tezos/-/tree/master/.gitlab/ci) in the ocurrent world.
 
 ### What is supported
 
