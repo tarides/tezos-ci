@@ -29,5 +29,5 @@ dune exec -- tezos-ci --ocluster-cap <ocluster_capability_file> \
 ### Locally using docker
 
 ```
-dune exec -- tezos-ci --verbose
+dune exec -- tezos-ci-local --verbose
 ```
