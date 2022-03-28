@@ -10,7 +10,3 @@
 	path = vendor/current-web-pipelines
 	url = https://github.com/tarides/current-web-pipelines.git
 	branch = main
-[submodule "vendor/ocaml-gitlab"]
-	path = vendor/ocaml-gitlab
-	url = https://github.com/tmcgilchrist/ocaml-gitlab.git
-	branch = master
