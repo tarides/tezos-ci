@@ -21,7 +21,7 @@
   (ocaml
    (>= 4.08.0))
   (current
-   (>= 0.3))
+   (>= 0.6))
   current_web
   current_git
   current_gitlab
