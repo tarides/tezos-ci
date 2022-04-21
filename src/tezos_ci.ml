@@ -25,7 +25,7 @@ let ci_refs gitlab =
     in
     let is_default = function
       | Pipeline.Source.Branch name ->
-          String.equal default_ref ("refs/heads" ^ name)
+          default_ref = (`Ref ("refs/heads" ^ name) : Gitlab.Api.Ref.t)
       | _ -> false
     in
     is_default ref || active commit
