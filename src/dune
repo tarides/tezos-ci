@@ -4,6 +4,7 @@
  (name tezos_ci)
  (modules tezos_ci)
  (libraries
+  dune-build-info
   current
   current.fs
   current.cache
@@ -29,6 +30,7 @@
  (name tezos_ci_local)
  (modules tezos_ci_local)
  (libraries
+  dune-build-info
   current
   current.fs
   current.cache
