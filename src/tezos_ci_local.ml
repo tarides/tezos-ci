@@ -61,6 +61,11 @@ let main () current_config mode (`Ocluster_cap cap) =
 
 (* Command-line parsing *)
 
+let version =
+  match Build_info.V1.version () with
+  | None -> "n/a"
+  | Some v -> Build_info.V1.Version.to_string v
+
 open Cmdliner
 
 let named f = Cmdliner.Term.(app (const f))
@@ -75,7 +80,7 @@ let ocluster_cap =
 let cmd =
   let doc = "an OCurrent pipeline" in
   let sdocs = Manpage.s_common_options in
-  let info = Cmd.info program_name ~doc ~sdocs in
+  let info = Cmd.info program_name ~doc ~sdocs ~version in
   Cmd.v info Term.(
     const main $ Logging.cmdliner $ Current.Config.cmdliner
     $ Current_web.cmdliner $ ocluster_cap)

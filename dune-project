@@ -20,6 +20,7 @@
  (depends
   (ocaml
    (>= 4.08.0))
+  dune-build-info
   (current
    (>= 0.6))
   current_web
