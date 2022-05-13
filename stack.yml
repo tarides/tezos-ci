@@ -31,4 +31,8 @@ services:
       - infra_default
 volumes:
   data:
+<<<<<<< HEAD
   capnp-secrets:
+=======
+  capnp-secrets:
+>>>>>>> 5b78163 (Document manual setup for tezos-ci on GitLab.)

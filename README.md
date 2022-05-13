@@ -15,6 +15,10 @@ A translation of Tezos' [Gitlab CI](https://gitlab.com/tezos/tezos/-/tree/master
 
 * Manual: `documentation:build_all`, `documentation:link_check`, `publish:docker_manual`
 
+## Building
+
+**TODO**
+
 ## Running
 
 ### In OCluster
@@ -46,7 +50,7 @@ A high level description of the components
                          │ │        tezos-ci                      │ │                 │    Tezos OCluster         │
          ───────────────►│ │                                      │ │   submission    │                           │
                          │ │         * octez pipeline             │ │   capability    │   ┌─────────────────┐     │
-                         │ │                                      ├─┼────────────────►│   │                 │     │
+                         │ │         * ocaml-ci-gitlab pipeline   ├─┼────────────────►│   │                 │     │
                          │ │         * web ui                     │ │                 │   │    scheduler    │     │
                          │ │                                      │ │                 │   └──┬──────────────┘     │
                          │ │                                      │ │                 │      │      pools         │
@@ -54,27 +58,23 @@ A high level description of the components
                          │ │                                      │ │                 │      │    │             │ │
                          │ │                                      │ │                 │      ├────┤  x86_64     │ │
                          │ │                                      │ │                 │      │    ├─────────────┤ │
-       (main UI)         │ └──────────────────────────────────────┘ │                 │      │    │             │ │
+                         │ └──────────────────────────────────────┘ │                 │      │    │             │ │
                          │                                          │                 │      ├────┤  arm64      │ │
-gitlab.tezos.ci.dev:80/  │ ┌──────────────┐     ┌────────────────┐  │   submission    │      │    ├─────────────┤ │
-                    443  │ │              │     │                │  │   capability    │      │    │             │ │
-        ────────────────►│ │              │     │                ├──┼────────────────►│      └────┤  s390x      │ │
-                         │ │ ocaml-ci-web │     │ ocaml-ci-gitlab│  │                 │           └─────────────┘ │
-                 :8100   │ │              ├────►│                │  │                 │                           │
-                         │ │  * web ui    │ ui  │   * pipeline   │  │                 └───────────────────────────┘
-        (admin UI)       │ │              │ cap │   * solver     │  │
-                         │ │              │     │   * admin ui   │  │                  1 or more workers per pool
-                         │ │              │     │                │  │
-                         │ └──────────────┘     └────────────────┘  │
-                         │                                          │
-                         └──────────────────────────────────────────┘   
+                         └──────────────────────────────────────────┘                 │      │    ├─────────────┤ │
+                                                                                      │      │    │             │ │
+                                                                                      │      └────┤  s390x      │ │
+                                                                                      │           └─────────────┘ │
+                                                                                      │                           │
+                                                                                      └───────────────────────────┘
+                                                                     
+                                                                                       1 or more workers per pool
+                                                                        
 ```
 
 Terminology:
- * tezos-ci - pipeline for building the Tezos Octez implementation
- * ocaml-ci-gitlab - pipeline for building standard OCaml projects
- * ocaml-ci-web - Web frontend for ocaml-ci-gitlab
- * ui-cap - CapnP capability for communication between ocaml-ci-web and ocaml-ci-gitlab
+ * pipeline - composition of steps to achieve an outcome, for this project building an OCaml project
+ * octez-pipeline - pipeline for building the Tezos Octez implementation 
+ * ocaml-ci-gitlab - pipeline for building standard OCaml projects hosted on GitLab
  * submission capability - CapnP capability for submitting a build spec to the cluster
  * Tezos cluster - an OCluster instance for running Tezos builds
  * scheduler - a place to submit build specs to run in a pool
@@ -82,3 +82,11 @@ Terminology:
  * build spec - textual description of the steps a worker should perform
  * capnp - serialisation and RPC protocol used for communication between components
  * pool - collection of workers, such that each worker is interchangeable and capable of running a build spec
+
+Conceptually Tezos-ci is a combination of two pipelines that build OCaml projects related to 
+the [Tezos Octez implementation](https://gitlab.com/tezos/tezos). The pipelines are:
+ * octez builds the main Octez project (https://gitlab.com/tezos/tezos)
+ * ocaml-ci-gitlab pipeline builds OCaml dependencies of Octez that are hosted on GitLab
+
+[Gitlab CI]: https://gitlab.com/tezos/tezos/-/tree/master/.gitlab/ci
+[ocurrent]: https://github.com/ocurrent/ocurrent
