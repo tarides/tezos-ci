@@ -19,7 +19,7 @@
  (description "A longer description")
  (depends
   (ocaml
-   (>= 4.08.0))
+   (>= 4.10.0))
   dune-build-info
   (current
    (>= 0.6))
