@@ -46,7 +46,7 @@ let main () current_config mode (`Ocluster_cap cap) =
         pipeline ~index ocluster)
   in
   let site =
-    let routes = Website.routes index @ Current_web.routes engine in
+    let routes = Website.routes index engine @ Current_web.routes engine in
     Current_web.Site.(v ~has_role:allow_all) ~name:program_name routes
   in
   Logging.run
