@@ -17,55 +17,57 @@ let v (tezos_repository : Analysis.Tezos_repository.t) =
     Obuilder_spec.(
       stage ~from
         ~child_builds:[ ("build_src", Lib.Fetch.spec tezos_repository) ]
-        [
-          user ~uid:100 ~gid:100;
-          env "HOME" "/home/tezos";
-          workdir "/tezos/";
-          run "sudo chown 100:100 /tezos/";
-          copy ~from:(`Build "build_src")
+        [ user ~uid:100 ~gid:100
+        ; env "HOME" "/home/tezos"
+        ; workdir "/tezos/"
+        ; run "sudo chown 100:100 /tezos/"
+        ; copy ~from:(`Build "build_src")
             [ "/tezos/scripts/version.sh" ]
-            ~dst:"./scripts/version.sh";
-          run ". ./scripts/version.sh";
-          (* Load the environment poetry previously created in the docker image.
+            ~dst:"./scripts/version.sh"
+        ; run ". ./scripts/version.sh"
+        ; (* Load the environment poetry previously created in the docker image.
              Give access to the Python dependencies/executables *)
-          run ". $HOME/.venv/bin/activate";
-          copy ~from:(`Build "build_src")
-            [
-              "/tezos/active_testing_protocol_versions";
-              "/tezos/active_protocol_versions";
-              "/tezos/poetry.lock";
-              "/tezos/pyproject.toml";
-              "/tezos/Makefile";
-              "/tezos/dune";
-              "/tezos/dune-project";
+          run ". $HOME/.venv/bin/activate"
+        ; copy ~from:(`Build "build_src")
+            [ "/tezos/active_testing_protocol_versions"
+            ; "/tezos/active_protocol_versions"
+            ; "/tezos/poetry.lock"
+            ; "/tezos/pyproject.toml"
+            ; "/tezos/Makefile"
+            ; "/tezos/dune"
+            ; "/tezos/dune-project"
             ]
-            ~dst:"./";
-          (* TODO: copy the subset of /src that is actually useful *)
-          copy ~from:(`Build "build_src") [ "/tezos/src" ] ~dst:"src";
-          copy ~from:(`Build "build_src") [ "/tezos/tezt" ] ~dst:"tezt";
-          copy ~from:(`Build "build_src") [ "/tezos/vendors" ] ~dst:"vendors";
-          copy ~from:(`Build "build_src") [ "/tezos/.git" ] ~dst:".git";
-          copy ~from:(`Build "build_src")
+            ~dst:"./"
+        ; (* TODO: copy the subset of /src that is actually useful *)
+          copy ~from:(`Build "build_src") [ "/tezos/src" ] ~dst:"src"
+        ; copy ~from:(`Build "build_src") [ "/tezos/tezt" ] ~dst:"tezt"
+        ; copy ~from:(`Build "build_src") [ "/tezos/vendors" ] ~dst:"vendors"
+        ; copy ~from:(`Build "build_src") [ "/tezos/.git" ] ~dst:".git"
+        ; copy ~from:(`Build "build_src")
             [ "/tezos/scripts/remove-old-protocols.sh" ]
-            ~dst:"scripts/remove-old-protocols.sh";
-          run "./scripts/remove-old-protocols.sh";
-          (* 1. Some basic, fast sanity checks *)
+            ~dst:"scripts/remove-old-protocols.sh"
+        ; run "./scripts/remove-old-protocols.sh"
+        ; (* 1. Some basic, fast sanity checks *)
           (* TODO: sanity check for the version *)
-          run "diff poetry.lock /home/tezos/poetry.lock";
-          run "diff pyproject.toml /home/tezos/pyproject.toml";
-          env "DUNE_CACHE" "enabled";
-          env "DUNE_CACHE_TRANSPORT" "direct";
-          run ~cache "opam exec -- dune build @runtest_dune_template";
-          (* 2. Actually build and extract _build/default/src/lib_protocol_compiler/main_native.exe from the cached folder *)
-          run ~cache "opam exec -- make all build-test";
-          run ~cache "opam exec -- dune build src/bin_tps_evaluation";
-          run
+          run "diff poetry.lock /home/tezos/poetry.lock"
+        ; run "diff pyproject.toml /home/tezos/pyproject.toml"
+        ; env "DUNE_CACHE" "enabled"
+        ; env "DUNE_CACHE_TRANSPORT" "direct"
+        ; run ~cache "opam exec -- dune build @runtest_dune_template"
+        ; (* 2. Actually build and extract
+             _build/default/src/lib_protocol_compiler/main_native.exe from the
+             cached folder *)
+          run ~cache "opam exec -- make all build-test"
+        ; run ~cache "opam exec -- dune build src/bin_tps_evaluation"
+        ; run
             "mkdir dist && cp --parents tezos-* src/proto_*/parameters/*.json \
-             _build/default/src/lib_protocol_compiler/bin/main_native.exe dist";
+             _build/default/src/lib_protocol_compiler/bin/main_native.exe dist"
         ])
   in
   Obuilder_spec.(
-    stage ~child_builds:[ ("tzbuild", build) ] ~from:"alpine"
+    stage
+      ~child_builds:[ ("tzbuild", build) ]
+      ~from:"alpine"
       [ copy ~from:(`Build "tzbuild") [ "/tezos/dist" ] ~dst:"/dist" ])
 
 let arm64 ~builder (analysis : Analysis.Tezos_repository.t Current.t) =

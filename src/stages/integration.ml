@@ -11,18 +11,17 @@ let template ~script analysis =
   Obuilder_spec.(
     stage ~from
       ~child_builds:[ ("build", build); ("src", Lib.Fetch.spec analysis) ]
-      [
-        user ~uid:100 ~gid:100;
-        workdir "/home/tezos/src";
-        copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
-        copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
-        run ". ./scripts/version.sh";
-        env "VIRTUAL_ENV" "/home/tezos/.venv";
-        env "PATH" "$VIRTUAL_ENV/bin:$PATH";
-        run "mkdir tests_python/tmp";
-        run "touch tests_python/tmp/empty__to_avoid_glob_failing";
-        workdir "tests_python";
-        run "%s; exit_code=$?; tail -n 100 tmp/*; exit $exit_code" script;
+      [ user ~uid:100 ~gid:100
+      ; workdir "/home/tezos/src"
+      ; copy ~from:(`Build "src") [ "/tezos/" ] ~dst:"."
+      ; copy ~from:(`Build "build") [ "/dist/" ] ~dst:"."
+      ; run ". ./scripts/version.sh"
+      ; env "VIRTUAL_ENV" "/home/tezos/.venv"
+      ; env "PATH" "$VIRTUAL_ENV/bin:$PATH"
+      ; run "mkdir tests_python/tmp"
+      ; run "touch tests_python/tmp/empty__to_avoid_glob_failing"
+      ; workdir "tests_python"
+      ; run "%s; exit_code=$?; tail -n 100 tmp/*; exit $exit_code" script
       ])
 
 let pytest ~tezt_job =

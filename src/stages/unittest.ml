@@ -10,64 +10,56 @@ let template ?(extra_script = []) ~targets analysis =
     match targets with
     | [] -> []
     | targets ->
-        [ Obuilder_spec.run "opam exec -- make %s" (String.concat " " targets) ]
+      [ Obuilder_spec.run "opam exec -- make %s" (String.concat " " targets) ]
   in
   Obuilder_spec.(
     stage ~from
       ~child_builds:[ ("build", build); ("src", Lib.Fetch.spec analysis) ]
-      ([
-         user ~uid:100 ~gid:100;
-         workdir "/home/tezos/src";
-         copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
-         copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
-         env "recommended_node_version"
-           analysis.version.recommended_node_version;
-         (* TODO *)
-         env "ARCH" "x86_64";
+      ([ user ~uid:100 ~gid:100
+       ; workdir "/home/tezos/src"
+       ; copy ~from:(`Build "src") [ "/tezos/" ] ~dst:"."
+       ; copy ~from:(`Build "build") [ "/dist/" ] ~dst:"."
+       ; env "recommended_node_version"
+           analysis.version.recommended_node_version
+       ; (* TODO *)
+         env "ARCH" "x86_64"
        ]
-      @ make
-      @ extra_script))
+      @ make @ extra_script))
 
 let targets =
-  [
-    ( "unit:010_PtGRANAD",
-      [
-        "src/proto_010_PtGRANAD/lib_client.test_proto";
-        "src/proto_010_PtGRANAD/lib_protocol.test_proto";
-      ],
-      None );
-    ( "unit:011_PtHangz2",
-      [
-        "src/proto_011_PtHangz2/lib_benchmark/lib_benchmark_type_inference.test_proto";
-        "src/proto_011_PtHangz2/lib_benchmark.test_proto";
-        "src/proto_011_PtHangz2/lib_client.test_proto";
-        "src/proto_011_PtHangz2/lib_protocol.test_proto";
-      ],
-      None );
-    ( "unit:alpha",
-      [
-        "src/proto_alpha/lib_benchmark/lib_benchmark_type_inference.test_proto";
-        "src/proto_alpha/lib_benchmark.test_proto";
-        "src/proto_alpha/lib_client.test_proto";
-        "src/proto_alpha/lib_protocol.test_proto";
-      ],
-      None );
-    ("unit:non-proto", [ "test-nonproto-unit" ], None);
-    ( "unit:js_components",
-      [],
-      Some
+  [ ( "unit:010_PtGRANAD"
+    , [ "src/proto_010_PtGRANAD/lib_client.test_proto"
+      ; "src/proto_010_PtGRANAD/lib_protocol.test_proto"
+      ]
+    , None )
+  ; ( "unit:011_PtHangz2"
+    , [ "src/proto_011_PtHangz2/lib_benchmark/lib_benchmark_type_inference.test_proto"
+      ; "src/proto_011_PtHangz2/lib_benchmark.test_proto"
+      ; "src/proto_011_PtHangz2/lib_client.test_proto"
+      ; "src/proto_011_PtHangz2/lib_protocol.test_proto"
+      ]
+    , None )
+  ; ( "unit:alpha"
+    , [ "src/proto_alpha/lib_benchmark/lib_benchmark_type_inference.test_proto"
+      ; "src/proto_alpha/lib_benchmark.test_proto"
+      ; "src/proto_alpha/lib_client.test_proto"
+      ; "src/proto_alpha/lib_protocol.test_proto"
+      ]
+    , None )
+  ; ("unit:non-proto", [ "test-nonproto-unit" ], None)
+  ; ( "unit:js_components"
+    , []
+    , Some
         Obuilder_spec.
-          [
-            run
+          [ run
               ". ./scripts/install_build_deps.js.sh && opam exec -- make \
-               test-js";
-          ] );
-    ( "unit:protocol_compiles",
-      [],
-      Some
-        [
-          Obuilder_spec.run "opam exec -- dune build @runtest_compile_protocol";
-        ] );
+               test-js"
+          ] )
+  ; ( "unit:protocol_compiles"
+    , []
+    , Some
+        [ Obuilder_spec.run "opam exec -- dune build @runtest_compile_protocol"
+        ] )
   ]
 
 let all ~builder (analysis : Analysis.Tezos_repository.t Current.t) =

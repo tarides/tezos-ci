@@ -3,14 +3,17 @@ module Source = struct
     | Schedule of Current_cache.Schedule.t
     | Branch of string
     | Tag of string
-    | Merge_request of { from_branch : string; to_branch : string }
+    | Merge_request of
+        { from_branch : string
+        ; to_branch : string
+        }
 
   let id = function
     | Schedule _ -> Fmt.str "schedule"
     | Branch b -> Fmt.str "branch:%s" b
     | Tag t -> Fmt.str "tag:%s" t
     | Merge_request { from_branch; to_branch } ->
-        Fmt.str "mr:%s:%s" from_branch to_branch
+      Fmt.str "mr:%s:%s" from_branch to_branch
 
   let marshal = id
 
@@ -20,7 +23,7 @@ module Source = struct
     | [ "branch"; branch ] -> Branch branch
     | [ "tag"; tag ] -> Tag tag
     | [ "mr"; from_branch; to_branch ] ->
-        Merge_request { from_branch; to_branch }
+      Merge_request { from_branch; to_branch }
     | _ -> failwith "unknown source"
 
   let to_string = function
@@ -28,14 +31,14 @@ module Source = struct
     | Branch b -> Fmt.str "Branch %s" b
     | Tag t -> Fmt.str "Tag %s" t
     | Merge_request { from_branch; to_branch } ->
-        Fmt.str "MR #%s on %s" from_branch to_branch
+      Fmt.str "MR #%s on %s" from_branch to_branch
 
   let link_to = function
     | Schedule _ -> ""
     | Branch b -> "https://gitlab.com/tezos/tezos/-/tree/" ^ b
     | Tag t -> "https://gitlab.com/tezos/tezos/-/tags/" ^ t
     | Merge_request { from_branch; _ } ->
-        "https://gitlab.com/tezos/tezos/-/merge_requests/" ^ from_branch
+      "https://gitlab.com/tezos/tezos/-/merge_requests/" ^ from_branch
   (* XXX: hack *)
 
   let compare s1 s2 = compare s1 s2 (* XXX: better compare function ?*)
@@ -63,15 +66,20 @@ let branch_match branch target = Astring.String.is_infix ~affix:target branch
 
 let is_version t =
   (* TODO: implement /\A\d+\.\d+\.\d+\z/*)
-  match String.split_on_char '.' t with [ _; _; _ ] -> true | _ -> false
+  match String.split_on_char '.' t with
+  | [ _; _; _ ] -> true
+  | _ -> false
 
-type should_run = Yes | Manual | No
+type should_run =
+  | Yes
+  | Manual
+  | No
 
 let should_run mode source =
   let branch_or_mr_source_branch_match value = function
     | Source.Branch branch when branch_match branch value -> true
     | Merge_request { from_branch; _ } when branch_match from_branch value ->
-        true
+      true
     | _ -> false
   in
   let is_master_or_release = function
@@ -90,8 +98,7 @@ let should_run mode source =
   | Master, _ -> No
   | Development_documentation, Schedule _ -> Yes
   | Development_documentation, v when branch_or_mr_source_branch_match "doc" v
-    ->
-      Yes
+    -> Yes
   | Development_documentation, _ -> No
   | Development_coverage, Schedule _ -> Yes
   | Development_coverage, _ -> Manual
@@ -100,8 +107,7 @@ let should_run mode source =
   | Development_arm64, _ -> Manual
   | Opam_packaging, Branch "master"
   | Opam_packaging, Merge_request _
-  | Opam_packaging, Schedule _ ->
-      Yes
+  | Opam_packaging, Schedule _ -> Yes
   | Opam_packaging, Branch branch when branch_match branch "opam" -> Yes
   | Opam_packaging, _ -> No
   | Commit_tag_is_version, Tag tag when is_version tag -> Yes
@@ -110,47 +116,41 @@ let should_run mode source =
 
 let stages =
   let open Stages in
-  [
-    ("base_images", [ (Development, "build", Base_image.build) ]);
-    ( "build",
-      [
-        (Development, "x86_64", Build.x86_64);
-        (Development_arm64, "arm64", Build.arm64);
-        (Development, "doc", Doc.build);
-      ] );
-    ( "sanity_ci",
-      [
-        (Development, "sanity_ci", Lints.sanity_ci);
-        (Always, "docker_hadolint", Lints.docker_hadolint);
-      ] );
-    ( "test",
-      [
-        (Development, "integration", Integration.all);
-        (Development, "integration:tezt", Tezt.job);
-        ( Development,
-          "test-liquidity-baking-scripts",
-          Test_liquidity_baking_scripts.test );
-        (Always, "misc", Lints.misc_checks);
-        (Always, "check_precommit_hook", Lints.check_precommit_hook);
-        (Development, "unit tests", Unittest.all);
-      ] );
-    ( "doc",
-      [
-        (Master, "documentation", Publish.documentation);
-        (Development_documentation, "dev documentation", Test_doc_scripts.all);
-      ] );
-    ("packaging", [ (Opam_packaging, "packaging", Packaging.all) ]);
-    ( "build_release",
-      [ (Master_and_releases, "build_release", Publish.build_release) ] );
-    ( "publish_release",
-      [ (Commit_tag_is_version, "publish_release", Publish.publish_release) ] );
-    ( "test_coverage",
-      [ (Development_coverage, "test_coverage", Coverage.test_coverage) ] );
-    ( "manual",
-      [
-        (Development_manual, "doc:build_all", Doc.build_all);
-        (Development_manual, "doc:linkcheck", Doc.linkcheck);
-      ] );
+  [ ("base_images", [ (Development, "build", Base_image.build) ])
+  ; ( "build"
+    , [ (Development, "x86_64", Build.x86_64)
+      ; (Development_arm64, "arm64", Build.arm64)
+      ; (Development, "doc", Doc.build)
+      ] )
+  ; ( "sanity_ci"
+    , [ (Development, "sanity_ci", Lints.sanity_ci)
+      ; (Always, "docker_hadolint", Lints.docker_hadolint)
+      ] )
+  ; ( "test"
+    , [ (Development, "integration", Integration.all)
+      ; (Development, "integration:tezt", Tezt.job)
+      ; ( Development
+        , "test-liquidity-baking-scripts"
+        , Test_liquidity_baking_scripts.test )
+      ; (Always, "misc", Lints.misc_checks)
+      ; (Always, "check_precommit_hook", Lints.check_precommit_hook)
+      ; (Development, "unit tests", Unittest.all)
+      ] )
+  ; ( "doc"
+    , [ (Master, "documentation", Publish.documentation)
+      ; (Development_documentation, "dev documentation", Test_doc_scripts.all)
+      ] )
+  ; ("packaging", [ (Opam_packaging, "packaging", Packaging.all) ])
+  ; ( "build_release"
+    , [ (Master_and_releases, "build_release", Publish.build_release) ] )
+  ; ( "publish_release"
+    , [ (Commit_tag_is_version, "publish_release", Publish.publish_release) ] )
+  ; ( "test_coverage"
+    , [ (Development_coverage, "test_coverage", Coverage.test_coverage) ] )
+  ; ( "manual"
+    , [ (Development_manual, "doc:build_all", Doc.build_all)
+      ; (Development_manual, "doc:linkcheck", Doc.linkcheck)
+      ] )
   ]
 
 let pipeline_stage ~stage_name ~gate ~builder ~analysis ~source stage =
@@ -160,8 +160,8 @@ let pipeline_stage ~stage_name ~gate ~builder ~analysis ~source stage =
            match should_run mode source with
            | No -> Lib.Task.skip ~name "Shouldn't run in this pipeline"
            | Manual ->
-               let builder = Lib.Builder.manual builder in
-               task ~builder analysis |> Lib.Task.allow_failures
+             let builder = Lib.Builder.manual builder in
+             task ~builder analysis |> Lib.Task.allow_failures
            | Yes -> task ~builder analysis)
   in
   let current =
@@ -172,7 +172,10 @@ let pipeline_stage ~stage_name ~gate ~builder ~analysis ~source stage =
   in
   (current, jobs)
 
-type metadata = { source : Source.t; commit : Current_git.Commit_id.t }
+type metadata =
+  { source : Source.t
+  ; commit : Current_git.Commit_id.t
+  }
 
 (* execute the pipeline *)
 let v ~builder source commit =
@@ -183,7 +186,8 @@ let v ~builder source commit =
       (fun (gate, rest) (stage_name, tasks) ->
         let gate =
           (* add a label *)
-          let+ () = Current.return ~label:stage_name () and+ () = gate in
+          let+ () = Current.return ~label:stage_name ()
+          and+ () = gate in
           ()
         in
         let jobs, pages =
@@ -199,15 +203,13 @@ let v ~builder source commit =
   let state =
     Current.collapse ~key:"stages_state_root" ~value:"root" ~input:analysis
     @@ let+ stages =
-         pages
-         |> List.rev
+         pages |> List.rev
          |> List.map (fun (stage_name, substages) ->
                 List.map Current_web_pipelines.Task.state substages
                 |> Current.list_seq
                 |> Current.map (fun jobs ->
-                       {
-                         Current_web_pipelines.State.jobs;
-                         metadata = stage_name;
+                       { Current_web_pipelines.State.jobs
+                       ; metadata = stage_name
                        })
                 |> Current.collapse ~key:"stages_state" ~value:stage_name
                      ~input:analysis)

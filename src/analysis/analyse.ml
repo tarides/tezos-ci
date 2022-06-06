@@ -12,7 +12,9 @@ module Op = struct
   module Value = Tezos_repository
 
   let id = "tezos-analyse"
+
   let pp f = Git.Commit.pp_short f
+
   let auto_cancel = true
 
   let build No_context job git =
@@ -21,10 +23,10 @@ module Op = struct
     Git.with_checkout ~job git @@ fun repo_path ->
     match Tezos_repository.make ~commit:(Git.Commit.id git) repo_path with
     | Ok value ->
-        Current.Job.log job "Tezos_repository: %a"
-          (Yojson.Safe.pretty_print ~std:true)
-          (Tezos_repository.to_yojson value);
-        Lwt.return_ok value
+      Current.Job.log job "Tezos_repository: %a"
+        (Yojson.Safe.pretty_print ~std:true)
+        (Tezos_repository.to_yojson value);
+      Lwt.return_ok value
     | e -> Lwt.return e
 end
 

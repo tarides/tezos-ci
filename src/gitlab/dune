@@ -2,13 +2,13 @@
  (public_name tezos-ci.ocaml-ci-gitlab)
  (name ocaml_ci_gitlab)
  (libraries
-   ocaml-ci
-   ocaml-ci-service
-   current
-   current_git
-   current_github
-   current_gitlab
-   current_docker
-   current_web
-   gitlab-unix)
+  ocaml-ci
+  ocaml-ci-service
+  current
+  current_git
+  current_github
+  current_gitlab
+  current_docker
+  current_web
+  gitlab-unix)
  (modules pipeline))

@@ -19,18 +19,18 @@ module Website_description = struct
 
     let render_inline = function
       | Some artifacts ->
-          a
-            ~a:
-              [
-                a_href
-                  (Current_ocluster.Artifacts.public_path artifacts
-                  |> Fpath.to_string);
-              ]
-            [ txt "⤵️ artifacts " ]
+        a
+          ~a:
+            [ a_href
+                (Current_ocluster.Artifacts.public_path artifacts
+                |> Fpath.to_string)
+            ]
+          [ txt "⤵️ artifacts " ]
       | None -> txt ""
 
     (* TODO: provide marshalling in Current_ocluster.Artifacts.t *)
     let marshal v = Marshal.to_string v []
+
     let unmarshal v = Marshal.from_string v 0
   end
 
@@ -65,9 +65,13 @@ module Website_description = struct
     type t = string
 
     let id name = name
+
     let render_inline name = txt name
+
     let render _ = txt ""
+
     let marshal = Fun.id
+
     let unmarshal = Fun.id
   end
 
@@ -75,7 +79,11 @@ module Website_description = struct
     open Octez.Pipeline
 
     module Group = struct
-      type t = Merge_request | Branch | Tag | Other
+      type t =
+        | Merge_request
+        | Branch
+        | Tag
+        | Other
 
       let id = function
         | Merge_request -> "mr"
@@ -105,15 +113,15 @@ module Website_description = struct
     type t = metadata
 
     let id t = Current_git.Commit_id.hash t.commit
+
     let source t = t.source
 
     let marshal { source; commit } =
       `Assoc
-        [
-          ("repo", `String (Current_git.Commit_id.repo commit));
-          ("hash", `String (Current_git.Commit_id.hash commit));
-          ("gref", `String (Current_git.Commit_id.gref commit));
-          ("source", `String (Source.marshal source));
+        [ ("repo", `String (Current_git.Commit_id.repo commit))
+        ; ("hash", `String (Current_git.Commit_id.hash commit))
+        ; ("gref", `String (Current_git.Commit_id.gref commit))
+        ; ("source", `String (Source.marshal source))
         ]
       |> Yojson.Safe.to_string
 
@@ -124,9 +132,8 @@ module Website_description = struct
       let hash = member "hash" json |> to_string in
       let gref = member "gref" json |> to_string in
       let source = member "source" json |> to_string in
-      {
-        source = Source.unmarshal source;
-        commit = Current_git.Commit_id.v ~repo ~gref ~hash;
+      { source = Source.unmarshal source
+      ; commit = Current_git.Commit_id.v ~repo ~gref ~hash
       }
 
     let render_inline (t : t) =
@@ -135,23 +142,20 @@ module Website_description = struct
 
     let render (t : t) =
       div
-        [
-          txt "Link to ";
-          a ~a:[ a_href (Source.link_to t.source) ] [ txt "Gitlab" ];
+        [ txt "Link to "
+        ; a ~a:[ a_href (Source.link_to t.source) ] [ txt "Gitlab" ]
         ]
   end
 
   let render_index () =
     div
-      [
-        h1 [ txt "ꜩ Tezos CI" ];
-        p
-          [
-            txt "Source code on Github: ";
-            a
+      [ h1 [ txt "ꜩ Tezos CI" ]
+      ; p
+          [ txt "Source code on Github: "
+          ; a
               ~a:[ a_href "https://github.com/tarides/tezos-ci" ]
-              [ txt "tarides/tezos-ci" ];
-          ];
+              [ txt "tarides/tezos-ci" ]
+          ]
       ]
 end
 

@@ -1,10 +1,13 @@
 open Current_web_pipelines
 
-type task_metadata = { name : string; skippable : bool }
+type task_metadata =
+  { name : string
+  ; skippable : bool
+  }
 
 type t =
-  ( unit,
-    (Current_ocluster.Artifacts.t option, task_metadata) State.job_tree )
+  ( unit
+  , (Current_ocluster.Artifacts.t option, task_metadata) State.job_tree )
   Task.t
 
 let all ~name (t : t list) : t =
@@ -12,7 +15,8 @@ let all ~name (t : t list) : t =
   let v = t |> Task.all in
   let state =
     let open Current.Syntax in
-    let+ lst = Task.state v and+ name = name in
+    let+ lst = Task.state v
+    and+ name = name in
     State.job_tree_group { name; skippable = false } lst
   in
   Task.v ~current:(Task.current v) ~state
@@ -48,9 +52,8 @@ let skip ~name reason =
   let current = Current.return () in
   let state =
     Current.return
-      {
-        State.node = Item { result = Error (`Skipped reason); metadata = None };
-        metadata = { name; skippable = false };
+      { State.node = Item { result = Error (`Skipped reason); metadata = None }
+      ; metadata = { name; skippable = false }
       }
   in
   Task.v ~current ~state

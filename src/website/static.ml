@@ -2,8 +2,8 @@ open Lwt.Syntax
 
 let return_404 () =
   Lwt.return
-    ( Cohttp_lwt.Response.make ~status:`Not_found (),
-      Cohttp_lwt.Body.of_string "Not found\n" )
+    ( Cohttp_lwt.Response.make ~status:`Not_found ()
+    , Cohttp_lwt.Body.of_string "Not found\n" )
 
 let stream_file_content channel =
   let stream, push = Lwt_stream.create_bounded 2 in
@@ -12,11 +12,11 @@ let stream_file_content channel =
         let* v = Lwt_io.read ~count:(64 * 1024) channel in
         match v with
         | "" ->
-            push#close;
-            Lwt_io.close channel
+          push#close;
+          Lwt_io.close channel
         | v ->
-            let* () = push#push v in
-            loop ()
+          let* () = push#push v in
+          loop ()
       in
       loop ());
   stream
@@ -29,8 +29,8 @@ let serve_file path =
       let* size = Lwt_io.length channel in
       let headers =
         Cohttp.Header.of_list
-          [
-            ("Content-Length", Int64.to_string size); ("Content-Type", mime_type);
+          [ ("Content-Length", Int64.to_string size)
+          ; ("Content-Type", mime_type)
           ]
       in
       let content = stream_file_content channel in
@@ -53,19 +53,17 @@ let serve_dir_list ~name paths =
     let open Tyxml_html in
     match st_kind with
     | S_REG ->
-        Some
-          [
-            txt "F  ";
-            a ~a:[ a_href (target fname) ] [ txt fname ];
-            i [ txt (Fmt.str "  %a " pp_size st_size) ];
-          ]
+      Some
+        [ txt "F  "
+        ; a ~a:[ a_href (target fname) ] [ txt fname ]
+        ; i [ txt (Fmt.str "  %a " pp_size st_size) ]
+        ]
     | S_DIR ->
-        Some [ txt "D  "; a ~a:[ a_href (target fname) ] [ txt (fname ^ "/") ] ]
+      Some [ txt "D  "; a ~a:[ a_href (target fname) ] [ txt (fname ^ "/") ] ]
     | _ -> None
   in
   let+ data =
-    paths
-    |> List.map Fpath.to_string
+    paths |> List.map Fpath.to_string
     |> Lwt_list.map_s (fun v ->
            let+ stats = Lwt_unix.stat v in
            (Filename.basename v, stats))
@@ -75,9 +73,8 @@ let serve_dir_list ~name paths =
     html
       (head (title (txt ("Artifacts - " ^ Fpath.to_string name))) [])
       (body
-         [
-           h1 [ txt ("Directory " ^ Fpath.to_string name) ];
-           ul (data |> List.filter_map print_entry |> List.map li);
+         [ h1 [ txt ("Directory " ^ Fpath.to_string name) ]
+         ; ul (data |> List.filter_map print_entry |> List.map li)
          ])
   in
   let html = Fmt.to_to_string (Tyxml.Html.pp ()) page in
@@ -91,12 +88,12 @@ let validate_path ~root path =
   match path with
   | "" | "/" -> Some root
   | v -> (
-      let v = String.(sub v 1 (length v - 1)) in
-      match Fpath.of_string v with
-      | Ok path when Fpath.is_rel path ->
-          let merged_path = Fpath.(root // path |> normalize) in
-          if Fpath.is_rooted ~root merged_path then Some merged_path else None
-      | _ -> None)
+    let v = String.(sub v 1 (length v - 1)) in
+    match Fpath.of_string v with
+    | Ok path when Fpath.is_rel path ->
+      let merged_path = Fpath.(root // path |> normalize) in
+      if Fpath.is_rooted ~root merged_path then Some merged_path else None
+    | _ -> None)
 
 let strip_first_char m =
   if m = "" then "" else String.sub m 1 (String.length m - 1)
@@ -106,9 +103,9 @@ let serve ~root wildcard_path =
   match validate_path ~root (Routes.Parts.wildcard_match wildcard_path) with
   | None -> return_404 ()
   | Some path -> (
-      match Bos.OS.Dir.contents path with
-      | Ok paths ->
-          serve_dir_list
-            ~name:(Fpath.relativize ~root path |> Option.get)
-            (Fpath.v ".." :: paths)
-      | Error _ -> serve_file path)
+    match Bos.OS.Dir.contents path with
+    | Ok paths ->
+      serve_dir_list
+        ~name:(Fpath.relativize ~root path |> Option.get)
+        (Fpath.v ".." :: paths)
+    | Error _ -> serve_file path)

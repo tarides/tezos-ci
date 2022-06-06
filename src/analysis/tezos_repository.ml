@@ -1,23 +1,30 @@
 let ( let* ) = Result.bind
+
 let ( let+ ) r f = Result.map f r
 
 module Active_protocol = struct
-  type t = {
-    name : string;
-    (* 011-PtHangzH *)
-    folder_name : string;
-    (* 011_PtHangzH *)
-    id : string;
-    (* 011 *)
-    slow_tests : string list;
-  }
+  type t =
+    { name : string
+    ; (* 011-PtHangzH *)
+      folder_name : string
+    ; (* 011_PtHangzH *)
+      id : string
+    ; (* 011 *)
+      slow_tests : string list
+    }
   [@@deriving yojson, ord]
 
   let pp f v = Fmt.pf f "%s" v.name
 
   let get version =
     let folder_name = version in
-    let name = String.map (function '_' -> '-' | x -> x) folder_name in
+    let name =
+      String.map
+        (function
+          | '_' -> '-'
+          | x -> x)
+        folder_name
+    in
     let id = List.hd (String.split_on_char '-' name) in
 
     let+ slow_tests =
@@ -50,10 +57,10 @@ module Active_protocol = struct
 end
 
 module Version = struct
-  type t = {
-    build_deps_image_version : string;
-    recommended_node_version : string;
-  }
+  type t =
+    { build_deps_image_version : string
+    ; recommended_node_version : string
+    }
   [@@deriving yojson]
 
   let parse () =
@@ -65,10 +72,9 @@ module Version = struct
            (fun acc line ->
              match String.split_on_char '=' line with
              | [ "export opam_repository_tag"; build_deps_image_version ] ->
-                 { acc with build_deps_image_version }
+               { acc with build_deps_image_version }
              | [ "export recommended_node_version"; recommended_node_version ]
-               ->
-                 { acc with recommended_node_version }
+               -> { acc with recommended_node_version }
              | _ -> acc)
            { build_deps_image_version = ""; recommended_node_version = "" }
     in
@@ -90,10 +96,9 @@ module Current_git = struct
 
     let to_yojson v =
       `Assoc
-        [
-          ("hash", `String (hash v));
-          ("gref", `String (gref v));
-          ("repo", `String (repo v));
+        [ ("hash", `String (hash v))
+        ; ("gref", `String (gref v))
+        ; ("repo", `String (repo v))
         ]
 
     let of_yojson json =
@@ -107,18 +112,19 @@ module Current_git = struct
   end
 end
 
-type t = {
-  commit : Current_git.Commit_id.t;
-  all_protocols : string list;
-  active_protocols : Active_protocol.t list;
-  active_testing_protocol_versions : string list;
-  lib_packages : string list;
-  bin_packages : string list;
-  version : Version.t;
-}
+type t =
+  { commit : Current_git.Commit_id.t
+  ; all_protocols : string list
+  ; active_protocols : Active_protocol.t list
+  ; active_testing_protocol_versions : string list
+  ; lib_packages : string list
+  ; bin_packages : string list
+  ; version : Version.t
+  }
 [@@deriving yojson]
 
 let marshal t = t |> to_yojson |> Yojson.Safe.to_string
+
 let unmarshal t = t |> Yojson.Safe.from_string |> of_yojson |> Result.get_ok
 
 let find_opam folder =
@@ -144,7 +150,11 @@ let find_all_protocols () =
 
 let parse_protocol_file file =
   let+ lines = Bos.OS.File.read_lines file in
-  List.map (String.map (function '-' -> '_' | x -> x)) lines
+  List.map
+    (String.map (function
+      | '-' -> '_'
+      | x -> x))
+    lines
 
 let make ~commit repo_path =
   Bos.OS.Dir.with_current repo_path
@@ -188,14 +198,13 @@ let make ~commit repo_path =
       in
       let* version = Version.parse () in
       Ok
-        {
-          commit;
-          all_protocols;
-          active_testing_protocol_versions;
-          active_protocols;
-          bin_packages;
-          lib_packages;
-          version;
+        { commit
+        ; all_protocols
+        ; active_testing_protocol_versions
+        ; active_protocols
+        ; bin_packages
+        ; lib_packages
+        ; version
         })
     ()
   |> Result.join

@@ -10,14 +10,13 @@ let build ~builder (analysis : Tezos_repository.t Current.t) =
     Obuilder_spec.(
       stage ~from
         ~child_builds:[ ("src", Lib.Fetch.spec analysis) ]
-        [
-          user ~uid:100 ~gid:100;
-          workdir "/home/tezos";
-          copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
-          run
+        [ user ~uid:100 ~gid:100
+        ; workdir "/home/tezos"
+        ; copy ~from:(`Build "src") [ "/tezos" ] ~dst:"."
+        ; run
             "sed -i 's@:file:.*[.]html@:file: /dev/null@' \
-             ./docs/*/cli-commands.rst";
-          run "opam exec -- make -C docs html";
+             ./docs/*/cli-commands.rst"
+        ; run "opam exec -- make -C docs html"
         ])
   in
   Lib.Builder.build ~label:"documentation:build" builder spec
@@ -32,11 +31,10 @@ let build_all ~builder (analysis : Tezos_repository.t Current.t) =
     Obuilder_spec.(
       stage ~from
         ~child_builds:[ ("src", Lib.Fetch.spec analysis) ]
-        [
-          user ~uid:100 ~gid:100;
-          workdir "/home/tezos";
-          copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
-          run "opam exec -- make -C docs all";
+        [ user ~uid:100 ~gid:100
+        ; workdir "/home/tezos"
+        ; copy ~from:(`Build "src") [ "/tezos" ] ~dst:"."
+        ; run "opam exec -- make -C docs all"
         ])
   in
   Lib.Builder.build ~label:"documentation:build_all" builder spec
@@ -51,14 +49,13 @@ let linkcheck ~builder (analysis : Tezos_repository.t Current.t) =
     Obuilder_spec.(
       stage ~from
         ~child_builds:[ ("src", Lib.Fetch.spec analysis) ]
-        [
-          user ~uid:100 ~gid:100;
-          workdir "/home/tezos";
-          copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
-          run "opam exec -- make -C docs all";
-          run "opam exec -- make -C docs redirectcheck";
-          run "opam exec -- make -C docs linkcheck";
-          run "opam exec -- make -C docs sanitycheck";
+        [ user ~uid:100 ~gid:100
+        ; workdir "/home/tezos"
+        ; copy ~from:(`Build "src") [ "/tezos" ] ~dst:"."
+        ; run "opam exec -- make -C docs all"
+        ; run "opam exec -- make -C docs redirectcheck"
+        ; run "opam exec -- make -C docs linkcheck"
+        ; run "opam exec -- make -C docs sanitycheck"
         ])
   in
   Lib.Builder.build ~label:"documentation:linkcheck" builder spec

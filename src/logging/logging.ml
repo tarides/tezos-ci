@@ -28,5 +28,5 @@ let run x =
   match Lwt_main.run x with
   | Ok () -> Ok ()
   | Error (`Msg m) as e ->
-      Logs.err (fun f -> f "%a" Fmt.lines m);
-      e
+    Logs.err (fun f -> f "%a" Fmt.lines m);
+    e
