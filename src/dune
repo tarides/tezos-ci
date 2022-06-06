@@ -1,8 +1,6 @@
 (executable
- (public_name tezos-ci)
- (package tezos-ci)
- (name tezos_ci)
- (modules tezos_ci)
+ (name main)
+ (modules main)
  (libraries
   dune-build-info
   current
@@ -22,28 +20,41 @@
   tezos-ci.analysis
   tezos-ci.logging
   tezos-ci.octez
+  tezos-ci.gitlab-pipeline ; Make a sub-library eg tezos-ci.ocaml_ci 
   tezos-ci.website))
 
-(executable
- (public_name tezos-ci-local)
+; (executable
+;  (public_name tezos-ci-local)
+;  (package tezos-ci)
+;  (name tezos_ci_local)
+;  (modules tezos_ci_local)
+;  (libraries
+;   dune-build-info
+;   current
+;   current.fs
+;   current.cache
+;   current_git
+;   current_web
+;   current_gitlab
+;   capnp-rpc-unix
+;   astring
+;   dockerfile
+;   cmdliner
+;   obuilder-spec
+;   opam-file-format
+;   tezos-ci.analysis
+;   tezos-ci.pipeline
+;   tezos-ci.logging
+;   tezos_ocaml_ci ; Make a sub-library eg tezos-ci.ocaml_ci 
+;   tezos-ci.website))
+
+(install
+ (section bin)
  (package tezos-ci)
- (name tezos_ci_local)
- (modules tezos_ci_local)
- (libraries
-  dune-build-info
-  current
-  current.fs
-  current.cache
-  current_git
-  current_web
-  current_gitlab
-  capnp-rpc-unix
-  astring
-  dockerfile
-  cmdliner
-  obuilder-spec
-  opam-file-format
-  tezos-ci.analysis
-  tezos-ci.logging
-  tezos-ci.octez
-  tezos-ci.website))
+ (files (main-copy.exe as tezos-ci)))
+
+(rule
+ (target main-copy.exe)
+ (deps (package ocaml-ci-solver))
+ (action (copy main.exe main-copy.exe)))
+

@@ -24,8 +24,7 @@
   (ocaml
    (>= 4.10.0))
   dune-build-info
-  (current
-   (>= 0.6))
+  (current (>= 0.6))
   current_web
   current_git
   current_gitlab
@@ -34,12 +33,16 @@
   capnp-rpc-unix
   obuilder-spec
   opam-file-format
+  ocaml-ci-solver
   (ppx_deriving (>= 5.2.1))
   (ppx_deriving_yojson (>= 3.6.1))
   astring
   fmt
   lwt
   logs
+  ocaml-ci
+  ocaml-ci-service
+  ocaml-ci-solver
   (cmdliner (>= 1.1.0))
   dockerfile
   conf-libev)

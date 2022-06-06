@@ -108,16 +108,19 @@ let main () current_config mode gitlab (`Ocluster_cap cap) =
       (fun cap ->
         let vat = Capnp_rpc_unix.client_only_vat () in
         let submission_cap = Capnp_rpc_unix.Vat.import_exn vat cap in
-        let connection =
-          Current_ocluster.Connection.create ~max_pipeline:20 submission_cap
-        in
-        Current_ocluster.v connection)
+        let connection = Current_ocluster.Connection.create ~max_pipeline:20 submission_cap in
+        Current_ocluster.v connection, submission_cap)
       cap
   in
   let index = Website.make () in
+  let solver = Ocaml_ci.Solver_pool.spawn_local () in
   let engine =
     Current.Engine.create ~config:current_config (fun () ->
-        pipeline ~index ocluster gitlab)
+        Current.all [
+            pipeline ~index (Option.map fst ocluster) gitlab
+          ; Gitlab_pipeline.Pipeline.v ~ocluster:(Option.map snd ocluster) ~app:gitlab ~solver ()
+          ]
+      )
   in
   let site =
     let routes =

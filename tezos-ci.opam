@@ -31,6 +31,9 @@ depends: [
   "fmt"
   "lwt"
   "logs"
+  "ocaml-ci"
+  "ocaml-ci-service"
+  "ocaml-ci-solver"
   "cmdliner" {>= "1.1.0"}
   "dockerfile"
   "conf-libev"
