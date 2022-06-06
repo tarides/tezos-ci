@@ -1,6 +1,6 @@
 ## Tezos-CI
 
-A translation of Tezos' [Gitlab CI](https://gitlab.com/tezos/tezos/-/tree/master/.gitlab/ci) in the ocurrent world.
+A translation of Tezos' [Gitlab CI][] in the [ocurrent][] world.
 
 ### What is supported
 
@@ -96,3 +96,4 @@ the [Tezos Octez implementation](https://gitlab.com/tezos/tezos). The pipelines 
 
 [Gitlab CI]: https://gitlab.com/tezos/tezos/-/tree/master/.gitlab/ci
 [ocurrent]: https://github.com/ocurrent/ocurrent
+

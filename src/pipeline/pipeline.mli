@@ -1,3 +1,5 @@
+(* TODO This should be called Octez_pipeline *)
+
 module Source : sig
   type t =
     | Schedule of Current_cache.Schedule.t
