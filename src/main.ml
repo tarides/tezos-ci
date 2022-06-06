@@ -10,6 +10,7 @@ let repo_id =
 let ci_refs_staleness = Duration.of_day 1
 
 let ci_refs gitlab =
+  let open Octez in
   let to_ptime str =
     Ptime.of_rfc3339 str |> function
     | Ok (t, _, _) -> t
@@ -118,7 +119,7 @@ let main () current_config mode gitlab (`Ocluster_cap cap) =
     Current.Engine.create ~config:current_config (fun () ->
         Current.all [
             pipeline ~index (Option.map fst ocluster) gitlab
-          ; Gitlab_pipeline.Pipeline.v ~ocluster:(Option.map snd ocluster) ~app:gitlab ~solver ()
+          ; Ocaml_ci_gitlab.Pipeline.v ~ocluster:(Option.map snd ocluster) ~app:gitlab ~solver ()
           ]
       )
   in
