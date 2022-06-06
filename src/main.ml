@@ -10,6 +10,7 @@ let repo_id =
 let ci_refs_staleness = Duration.of_day 1
 
 let ci_refs gitlab =
+  let open Octez in
   let to_ptime str =
     Ptime.of_rfc3339 str |> function
     | Ok (t, _, _) -> t
@@ -57,13 +58,13 @@ let ci_refs gitlab =
      |> Current.Primitive.map_result (Result.map process_refs)
 
 module RefCommit = struct
-  type t = Pipeline.Source.t * Gitlab.Api.Commit.t
+  type t = Octez.Pipeline.Source.t * Gitlab.Api.Commit.t
 
   let pp f (source, commit) =
-    Fmt.pf f "%s: %a" (Pipeline.Source.id source) Gitlab.Api.Commit.pp commit
+    Fmt.pf f "%s: %a" (Octez.Pipeline.Source.id source) Gitlab.Api.Commit.pp commit
 
   let compare (s1, c1) (s2, c2) =
-    match Pipeline.Source.compare s1 s2 with
+    match Octez.Pipeline.Source.compare s1 s2 with
     | 0 -> Gitlab.Api.Commit.compare c1 c2
     | v -> v
 end
@@ -82,12 +83,12 @@ let pipeline ~index ocluster gitlab =
           | None -> Lib.Builder.make_docker
           | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster
         in
-        let task = Pipeline.v ~builder source commit in
+        let task = Octez.Pipeline.v ~builder source commit in
         let current = Current_web_pipelines.Task.current task in
         let state = Current_web_pipelines.Task.state task in
         Current.all [ current; Website.update_state index state ]
         |> Current.collapse ~key:"pipeline"
-             ~value:(Pipeline.Source.to_string source)
+             ~value:(Octez.Pipeline.Source.to_string source)
              ~input:src
 
 let main () current_config mode gitlab (`Ocluster_cap cap) =
@@ -106,7 +107,7 @@ let main () current_config mode gitlab (`Ocluster_cap cap) =
     Current.Engine.create ~config:current_config (fun () ->
         Current.all [
             pipeline ~index (Option.map fst ocluster) gitlab
-          ; Gitlab_pipeline.Pipeline.v ~ocluster:(Option.map snd ocluster) ~app:gitlab ~solver ()
+          ; Ocaml_ci_gitlab.Pipeline.v ~ocluster:(Option.map snd ocluster) ~app:gitlab ~solver ()
           ]
       )
   in

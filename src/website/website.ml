@@ -72,7 +72,7 @@ module Website_description = struct
   end
 
   module Pipeline = struct
-    open Pipeline
+    open Octez.Pipeline
 
     module Group = struct
       type t = Merge_request | Branch | Tag | Other
