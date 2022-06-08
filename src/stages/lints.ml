@@ -17,7 +17,8 @@ let sanity_ci ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
           copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
           run ". ./scripts/version.sh";
           run ". /home/tezos/.venv/bin/activate";
-          run "opam exec -- src/tooling/lint.sh --check-gitlab-ci-yml";
+          run "opam exec -- make -C manifest check";
+          run "opam exec -- scripts/lint.sh --check-gitlab-ci-yml";
         ])
   in
   Lib.Builder.build ~label:"lints:sanity_ci" builder spec
@@ -60,7 +61,7 @@ let misc_checks ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
           env "VIRTUAL_ENV" "/home/tezos/.venv";
           env "PATH" "$VIRTUAL_ENV/bin:$PATH";
           (* checks that all deps of opam packages are already installed *)
-          run "./scripts/opam-check.sh";
+          run "opam exec -- ./scripts/opam-check.sh";
           (* misc linting *)
           run
             "find . ! -path \"./_opam/*\" -name \"*.opam\" -exec opam lint {} \
