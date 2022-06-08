@@ -18,10 +18,10 @@ let v (tezos_repository : Analysis.Tezos_repository.t) =
       stage ~from
         ~child_builds:[ ("build_src", Lib.Fetch.spec tezos_repository) ]
         [
-          user ~uid:100 ~gid:100;
+          user ~uid:1000 ~gid:1000;
           env "HOME" "/home/tezos";
           workdir "/tezos/";
-          run "sudo chown 100:100 /tezos/";
+          run "sudo chown 1000:1000 /tezos/";
           copy ~from:(`Build "build_src")
             [ "/tezos/scripts/version.sh" ]
             ~dst:"./scripts/version.sh";
