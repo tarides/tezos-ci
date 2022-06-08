@@ -11,7 +11,7 @@ let sanity_ci ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
       stage ~from
         ~child_builds:[ ("build", build); ("src", Lib.Fetch.spec analysis) ]
         [
-          user ~uid:100 ~gid:100;
+          user ~uid:1000 ~gid:1000; 
           workdir "/home/tezos";
           copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
           copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
@@ -53,7 +53,7 @@ let misc_checks ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
       stage ~from
         ~child_builds:[ ("src", Lib.Fetch.spec analysis) ]
         [
-          user ~uid:100 ~gid:100;
+          user ~uid:1000 ~gid:1000; 
           workdir "/home/tezos/src";
           copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
           run ". ./scripts/version.sh";
@@ -92,7 +92,7 @@ let check_precommit_hook ~builder
       stage ~from
         ~child_builds:[ ("src", Lib.Fetch.spec analysis) ]
         [
-          user ~uid:100 ~gid:100;
+          user ~uid:1000 ~gid:1000; 
           workdir "/home/tezos";
           copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
           run ". ./scripts/version.sh";
