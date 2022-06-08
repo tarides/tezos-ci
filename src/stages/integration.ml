@@ -35,8 +35,7 @@ let pytest ~tezt_job =
 
 let examples =
   let script =
-    {|PYTHONPATH=\$PYTHONPATH:./ poetry run python examples/forge_transfer.py &&
-    PYTHONPATH=\$PYTHONPATH:./ poetry run python examples/example.py && 
+    {|PYTHONPATH=\$PYTHONPATH:./ poetry run python examples/example.py && 
     PYTHONPATH=./ poetry run pytest --exitfirst examples/test_example.py |}
   in
   template ~script
