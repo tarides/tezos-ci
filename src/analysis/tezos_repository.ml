@@ -112,8 +112,7 @@ type t = {
   all_protocols : string list;
   active_protocols : Active_protocol.t list;
   active_testing_protocol_versions : string list;
-  lib_packages : string list;
-  bin_packages : string list;
+  packages : string list;
   version : Version.t;
 }
 [@@deriving yojson]
@@ -150,25 +149,13 @@ let make ~commit repo_path =
   Bos.OS.Dir.with_current repo_path
     (fun () ->
       (* opam-pin.sh *)
-      let* opams_vendors = find_opam Fpath.(v "vendors") in
-      let* opams_src = find_opam (Fpath.v "src") in
-      let opams = opams_vendors @ opams_src in
-      let bin_packages, lib_packages =
-        List.partition
-          (fun path ->
-            let dir, _ = Fpath.split_base path in
-            Fpath.to_string dir |> Astring.String.is_infix ~affix:"/bin_")
-          opams
-      in
-      let bin_packages =
-        List.map
-          (fun path -> Fpath.split_base path |> snd |> Fpath.to_string)
-          bin_packages
-      in
-      let lib_packages =
-        List.map
-          (fun path -> Fpath.split_base path |> snd |> Fpath.to_string)
-          lib_packages
+      (* let* opams_vendors = find_opam Fpath.(v "vendors") in *)
+      let* opams_src = find_opam (Fpath.v "opam") in
+      let packages =
+        (* opams_vendors @  *)
+        opams_src
+        |> List.map (fun path ->
+               Fpath.split_base path |> snd |> Fpath.to_string)
       in
       (* remove-old-protocols.sh *)
       let* all_protocols = find_all_protocols () in
@@ -193,8 +180,7 @@ let make ~commit repo_path =
           all_protocols;
           active_testing_protocol_versions;
           active_protocols;
-          bin_packages;
-          lib_packages;
+          packages;
           version;
         })
     ()

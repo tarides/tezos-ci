@@ -25,8 +25,7 @@ type t = {
   active_testing_protocol_versions : string list;
       (** Active_testing_protocol_versions according to the
           /active_testing_protocol_versions file *)
-  lib_packages : string list;  (** List of library packages *)
-  bin_packages : string list;  (** List of binary packages *)
+  packages : string list;  (** List of packages *)
   version : Version.t;  (** Content of /scripts/version.sh *)
 }
 
