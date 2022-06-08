@@ -129,6 +129,7 @@ let main () current_config mode gitlab (`Ocluster_cap cap) =
         (s "webhooks" / s "gitlab" /? nil)
         @--> Gitlab.webhook ~webhook_secret:(Gitlab.Api.webhook_secret gitlab))
       :: Website.routes index engine
+      @ Website.Projects.routes ~engine
       @ Current_web.routes engine
     in
     Current_web.Site.(v ~has_role:allow_all) ~name:program_name routes
