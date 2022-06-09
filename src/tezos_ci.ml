@@ -37,7 +37,8 @@ let ci_refs gitlab =
           { from_branch = string_of_int number; to_branch = "master" }
     | `Ref ref -> (
         match String.split_on_char '/' ref with
-        | "refs" :: "heads" :: branch -> Pipeline.Source.Branch (String.concat "/" branch)
+        | "refs" :: "heads" :: branch ->
+            Pipeline.Source.Branch (String.concat "/" branch)
         | [ "refs"; "tags"; tag ] -> Pipeline.Source.Tag tag
         | _ -> failwith ("Could not process ref " ^ ref))
   in
@@ -68,27 +69,36 @@ module RefCommit = struct
     | v -> v
 end
 
+let run_ci_and_log_output ~index ocluster src =
+  let open Current.Syntax in
+  Current.component "pipeline"
+  |> let** source = Current.map fst src in
+     let commit =
+       Current.map (fun (_, commit) -> commit |> Gitlab.Api.Commit.id) src
+     in
+     let builder =
+       match ocluster with
+       | None -> Lib.Builder.make_docker
+       | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster
+     in
+     let task = Pipeline.v ~builder source commit in
+     let current = Current_web_pipelines.Task.current task in
+     let state = Current_web_pipelines.Task.state task in
+     Current.all [ current; Website.update_state index state ]
+     |> Current.collapse ~key:"pipeline"
+          ~value:(Pipeline.Source.to_string source)
+          ~input:src
+
 let pipeline ~index ocluster gitlab =
-  ci_refs gitlab
-  |> Current.list_iter (module RefCommit) @@ fun src ->
-     let open Current.Syntax in
-     Current.component "pipeline"
-     |> let** source = Current.map fst src in
-        let commit =
-          Current.map (fun (_, commit) -> commit |> Gitlab.Api.Commit.id) src
-        in
-        let builder =
-          match ocluster with
-          | None -> Lib.Builder.make_docker
-          | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster
-        in
-        let task = Pipeline.v ~builder source commit in
-        let current = Current_web_pipelines.Task.current task in
-        let state = Current_web_pipelines.Task.state task in
-        Current.all [ current; Website.update_state index state ]
-        |> Current.collapse ~key:"pipeline"
-             ~value:(Pipeline.Source.to_string source)
-             ~input:src
+  let ci_refs = ci_refs gitlab in
+  Current.all
+    [
+      Current.list_iter
+        (module RefCommit)
+        (run_ci_and_log_output ~index ocluster)
+        ci_refs;
+      ci_refs |> Current.map (List.map fst) |> Website.set_active_sources index;
+    ]
 
 let main () current_config mode gitlab (`Ocluster_cap cap) =
   let ocluster =
@@ -122,8 +132,7 @@ let main () current_config mode gitlab (`Ocluster_cap cap) =
        [
          Current.Engine.thread engine;
          (* The main thread evaluating the pipeline. *)
-         Current_web.run ~mode site;
-         (* Optional: provides a web UI *)
+         Current_web.run ~mode site (* Optional: provides a web UI *);
        ])
   |> Result.map_error (fun (`Msg msg) -> msg)
 
@@ -149,12 +158,13 @@ let cmd =
   let doc = "an OCurrent pipeline" in
   let sdocs = Manpage.s_common_options in
   let info = Cmd.info program_name ~doc ~sdocs ~version in
-  Cmd.v info Term.(
-        const main
-        $ Logging.cmdliner
-    $ Current.Config.cmdliner
-    $ Current_web.cmdliner
-    $ Current_gitlab.Api.cmdliner
-    $ ocluster_cap)
+  Cmd.v info
+    Term.(
+      const main
+      $ Logging.cmdliner
+      $ Current.Config.cmdliner
+      $ Current_web.cmdliner
+      $ Current_gitlab.Api.cmdliner
+      $ ocluster_cap)
 
 let () = exit (Cmd.eval_result cmd)
