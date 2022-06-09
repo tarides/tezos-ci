@@ -149,10 +149,8 @@ let make ~commit repo_path =
   Bos.OS.Dir.with_current repo_path
     (fun () ->
       (* opam-pin.sh *)
-      (* let* opams_vendors = find_opam Fpath.(v "vendors") in *)
       let* opams_src = find_opam (Fpath.v "opam") in
       let packages =
-        (* opams_vendors @  *)
         opams_src
         |> List.map (fun path ->
                Fpath.split_base path |> snd |> Fpath.to_string)
