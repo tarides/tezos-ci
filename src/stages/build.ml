@@ -67,9 +67,13 @@ let v (tezos_repository : Analysis.Tezos_repository.t) =
         ])
   in
   Obuilder_spec.(
-    stage ~child_builds:[ ("tzbuild", build) ] ~from:"alpine"
-      [ copy ~from:(`Build "tzbuild") [ "/tezos/dist" ] ~dst:"/dist";
-        run "find /dist" ])
+    stage
+      ~child_builds:[ ("tzbuild", build) ]
+      ~from:"alpine"
+      [
+        copy ~from:(`Build "tzbuild") [ "/tezos/dist" ] ~dst:"/dist";
+        run "find /dist";
+      ])
 
 let arm64 ~builder (analysis : Analysis.Tezos_repository.t Current.t) =
   Current.map v analysis

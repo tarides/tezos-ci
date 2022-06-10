@@ -12,7 +12,7 @@ let template ~tezt_job analysis =
     stage ~from
       ~child_builds:[ ("build", build); ("src", Lib.Fetch.spec analysis) ]
       [
-        user ~uid:1000 ~gid:1000; 
+        user ~uid:1000 ~gid:1000;
         workdir "/home/tezos/src";
         copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
         copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";
@@ -22,8 +22,8 @@ let template ~tezt_job analysis =
         run
           "opam exec -- dune exec tezt/tests/main.exe -- --color \
            --log-buffer-size 5000 --log-file tezt.log --global-timeout 3300 \
-           --junit tezt-junit.xml --from-record tezt/records --job \
-           %d/%d --record tezt-results-%d.json"
+           --junit tezt-junit.xml --from-record tezt/records --job %d/%d \
+           --record tezt-results-%d.json"
           tezt_job tezt_job_total tezt_job;
         run "cat tezt.log";
         run "cat tezt-results-%d.json" tezt_job;

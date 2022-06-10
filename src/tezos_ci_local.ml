@@ -57,7 +57,7 @@ let main () current_config mode (`Ocluster_cap cap) =
          Current_web.run ~mode site;
          (* Optional: provides a web UI *)
        ])
-   |> Result.map_error (fun (`Msg msg) -> msg)
+  |> Result.map_error (fun (`Msg msg) -> msg)
 
 (* Command-line parsing *)
 
@@ -81,8 +81,12 @@ let cmd =
   let doc = "an OCurrent pipeline" in
   let sdocs = Manpage.s_common_options in
   let info = Cmd.info program_name ~doc ~sdocs ~version in
-  Cmd.v info Term.(
-    const main $ Logging.cmdliner $ Current.Config.cmdliner
-    $ Current_web.cmdliner $ ocluster_cap)
+  Cmd.v info
+    Term.(
+      const main
+      $ Logging.cmdliner
+      $ Current.Config.cmdliner
+      $ Current_web.cmdliner
+      $ ocluster_cap)
 
 let () = exit @@ Cmd.eval_result cmd
