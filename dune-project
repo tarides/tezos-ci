@@ -3,20 +3,23 @@
 (name tezos-ci)
 
 (generate_opam_files true)
-(formatting disabled)
-; Edit these to give your project's URL, authors and maintainers:
 
 (source
- (github ocurrent/tezos-ci))
+ (github tarides/tezos-ci))
 
-(authors "lucas@tarides.com")
+(authors
+ "Lucas Pluvinage <lucas@tarides.com>"
+ "Tim McGilchrist <timmcgil@gmail.com>"
+ "Antonin Décimo <antonin@tarides.com>"
+ "Navin Keswani <navin@novemberkilo.com>"
+ "David Allsopp <david.allsopp@metastack.com>")
 
-(maintainers "lucas@tarides.com")
+(maintainers "Lucas Pluvinage <lucas@tarides.com>")
 
 (package
  (name tezos-ci)
- (synopsis "An OCurrent pipeline")
- (description "A longer description")
+ (synopsis "OCurrent CI for Tezos")
+ (description "OCurrent CI for Tezos")
  (depends
   (ocaml
    (>= 4.10.0))

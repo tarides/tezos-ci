@@ -12,7 +12,7 @@ let template ~script analysis =
     stage ~from
       ~child_builds:[ ("build", build); ("src", Lib.Fetch.spec analysis) ]
       [
-        user ~uid:1000 ~gid:1000; 
+        user ~uid:1000 ~gid:1000;
         workdir "/home/tezos/src";
         copy ~from:(`Build "src") [ "/tezos/" ] ~dst:".";
         copy ~from:(`Build "build") [ "/dist/" ] ~dst:".";

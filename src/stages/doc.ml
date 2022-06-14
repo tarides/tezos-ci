@@ -11,7 +11,7 @@ let build ~builder (analysis : Tezos_repository.t Current.t) =
       stage ~from
         ~child_builds:[ ("src", Lib.Fetch.spec analysis) ]
         [
-          user ~uid:1000 ~gid:1000; 
+          user ~uid:1000 ~gid:1000;
           workdir "/home/tezos";
           copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
           run
@@ -33,7 +33,7 @@ let build_all ~builder (analysis : Tezos_repository.t Current.t) =
       stage ~from
         ~child_builds:[ ("src", Lib.Fetch.spec analysis) ]
         [
-          user ~uid:1000 ~gid:1000; 
+          user ~uid:1000 ~gid:1000;
           workdir "/home/tezos";
           copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
           run "opam exec -- make -C docs all";
@@ -52,7 +52,7 @@ let linkcheck ~builder (analysis : Tezos_repository.t Current.t) =
       stage ~from
         ~child_builds:[ ("src", Lib.Fetch.spec analysis) ]
         [
-          user ~uid:1000 ~gid:1000; 
+          user ~uid:1000 ~gid:1000;
           workdir "/home/tezos";
           copy ~from:(`Build "src") [ "/tezos" ] ~dst:".";
           run "opam exec -- make -C docs all";

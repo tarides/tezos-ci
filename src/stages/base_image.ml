@@ -62,7 +62,9 @@ module Specs = struct
         env "arch" "x86_64";
         (* XXX *)
         user ~uid:0 ~gid:0;
-        run "apk --no-cache add libev gmp sudo hidapi libffi libffi-dev gcc libc-dev";
+        run
+          "apk --no-cache add libev gmp sudo hidapi libffi libffi-dev gcc \
+           libc-dev";
         copy [ "zcash-params" ] ~dst:"/usr/share/zcash-params";
         run
           "adduser -S tezos -u 1000 -g 1000 && echo 'tezos ALL=(ALL:ALL) \

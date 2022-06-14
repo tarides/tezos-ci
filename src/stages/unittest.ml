@@ -90,8 +90,8 @@ let targets =
         Obuilder_spec.
           [
             run
-              "bash -c \". ./scripts/install_build_deps.js.sh && opam exec -- make \
-               test-js\"";
+              "bash -c \". ./scripts/install_build_deps.js.sh && opam exec -- \
+               make test-js\"";
           ] );
     ( "unit:protocol_compiles",
       [],
