@@ -123,13 +123,14 @@ let main () current_config mode gitlab (`Ocluster_cap cap) =
           ]
       )
   in
+
   let site =
     let routes =
-      Routes.(
-        (s "webhooks" / s "gitlab" /? nil)
-        @--> Gitlab.webhook ~webhook_secret:(Gitlab.Api.webhook_secret gitlab))
+      (* Replace ocurrent version of style.css with our version. *)
+      Routes.((s "css" / s "style.css" /? nil) @--> Website.Css.(static gitlab_css)) ::
+      Routes.((s "webhooks" / s "gitlab" /? nil) @--> Gitlab.webhook ~webhook_secret:(Gitlab.Api.webhook_secret gitlab))
       :: Website.routes index engine
-      @ Website.Projects.routes ~engine
+      @ Website.Projects.routes
       @ Current_web.routes engine
     in
     Current_web.Site.(v ~has_role:allow_all) ~name:program_name routes
