@@ -1,6 +1,6 @@
 (library
- (public_name tezos-ci.pipeline)
- (name pipeline)
+ (public_name tezos-ci.octez)
+ (name octez)
  (libraries obuilder-spec tezos-ci.analysis tezos-ci.lib tezos-ci.stages)
  (preprocess
   (pps ppx_deriving_yojson ppx_deriving.ord)))
