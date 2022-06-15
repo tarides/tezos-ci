@@ -3,7 +3,6 @@ open Config
 open Printf
 
 exception Project_hook of string
-(* let envs = Gitlab.Env.envs *)
 
 let token_file =
   Arg.required
