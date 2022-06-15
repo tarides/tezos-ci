@@ -1,6 +1,7 @@
 module Git = Current_git
 module Gitlab = Current_gitlab
 module Docker = Current_docker.Default
+module Pipeline = Octez.Pipeline
 
 let program_name = "tezos-ci-local"
 
@@ -28,6 +29,7 @@ let pipeline ~index ocluster =
        ~value:(Pipeline.Source.to_string source)
        ~input:commit
 
+(* TODO Add switch to choose between pipelines to run. *)
 let main () current_config mode (`Ocluster_cap cap) =
   let ocluster =
     Option.map

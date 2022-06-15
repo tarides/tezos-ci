@@ -6,4 +6,4 @@
   tezos-ci.analysis
   tezos-ci.lib
   tezos-ci.stages
-  tezos-ci.pipeline))
+  tezos-ci.octez))

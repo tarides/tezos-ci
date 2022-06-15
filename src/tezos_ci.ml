@@ -24,7 +24,7 @@ let ci_refs gitlab =
       committed > cutoff
     in
     let is_default = function
-      | Pipeline.Source.Branch name ->
+      | Octez.Pipeline.Source.Branch name ->
           default_ref = (`Ref ("refs/heads" ^ name) : Gitlab.Api.Ref.t)
       | _ -> false
     in
@@ -33,13 +33,13 @@ let ci_refs gitlab =
 
   let process_ref = function
     | `PR number ->
-        Pipeline.Source.Merge_request
+        Octez.Pipeline.Source.Merge_request
           { from_branch = string_of_int number; to_branch = "master" }
     | `Ref ref -> (
         match String.split_on_char '/' ref with
         | "refs" :: "heads" :: branch ->
-            Pipeline.Source.Branch (String.concat "/" branch)
-        | [ "refs"; "tags"; tag ] -> Pipeline.Source.Tag tag
+            Octez.Pipeline.Source.Branch (String.concat "/" branch)
+        | [ "refs"; "tags"; tag ] -> Octez.Pipeline.Source.Tag tag
         | _ -> failwith ("Could not process ref " ^ ref))
   in
 
@@ -58,13 +58,15 @@ let ci_refs gitlab =
      |> Current.Primitive.map_result (Result.map process_refs)
 
 module RefCommit = struct
-  type t = Pipeline.Source.t * Gitlab.Api.Commit.t
+  type t = Octez.Pipeline.Source.t * Gitlab.Api.Commit.t
 
   let pp f (source, commit) =
-    Fmt.pf f "%s: %a" (Pipeline.Source.id source) Gitlab.Api.Commit.pp commit
+    Fmt.pf f "%s: %a"
+      (Octez.Pipeline.Source.id source)
+      Gitlab.Api.Commit.pp commit
 
   let compare (s1, c1) (s2, c2) =
-    match Pipeline.Source.compare s1 s2 with
+    match Octez.Pipeline.Source.compare s1 s2 with
     | 0 -> Gitlab.Api.Commit.compare c1 c2
     | v -> v
 end
@@ -81,12 +83,12 @@ let run_ci_and_log_output ~index ocluster src =
        | None -> Lib.Builder.make_docker
        | Some ocluster -> Lib.Builder.make_ocluster `Docker ocluster
      in
-     let task = Pipeline.v ~builder source commit in
+     let task = Octez.Pipeline.v ~builder source commit in
      let current = Current_web_pipelines.Task.current task in
      let state = Current_web_pipelines.Task.state task in
      Current.all [ current; Website.update_state index state ]
      |> Current.collapse ~key:"pipeline"
-          ~value:(Pipeline.Source.to_string source)
+          ~value:(Octez.Pipeline.Source.to_string source)
           ~input:src
 
 let pipeline ~index ocluster gitlab =

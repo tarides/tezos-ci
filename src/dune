@@ -20,8 +20,8 @@
   obuilder-spec
   opam-file-format
   tezos-ci.analysis
-  tezos-ci.pipeline
   tezos-ci.logging
+  tezos-ci.octez
   tezos-ci.website))
 
 (executable
@@ -44,6 +44,6 @@
   obuilder-spec
   opam-file-format
   tezos-ci.analysis
-  tezos-ci.pipeline
   tezos-ci.logging
+  tezos-ci.octez
   tezos-ci.website))
