@@ -3,7 +3,8 @@
  (name ocaml_ci_gitlab)
  (libraries
    ocaml-ci
-   ocaml-ci-service
+   ocaml-version
+   dockerfile-opam
    current
    current_git
    current_github
@@ -11,4 +12,4 @@
    current_docker
    current_web
    gitlab-unix)
- (modules pipeline))
+ (modules pipeline conf))

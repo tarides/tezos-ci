@@ -16,6 +16,7 @@ depends: [
   "dune" {>= "2.8"}
   "ocaml" {>= "4.10.0"}
   "dune-build-info"
+  "github-unix"
   "current" {>= "0.6"}
   "current_web"
   "current_git"
@@ -33,7 +34,7 @@ depends: [
   "lwt"
   "logs"
   "ocaml-ci"
-  "ocaml-ci-service"
+  "ocaml-ci-api"
   "ocaml-ci-solver"
   "cmdliner" {>= "1.1.0"}
   "dockerfile"

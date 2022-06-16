@@ -1,7 +1,7 @@
 FROM ocaml/opam:debian-11-ocaml-4.14@sha256:c9b4f14cd425a623c4ed33182b3a845175aa7494578d6997fbb9c71d4f2a8135 AS build
 RUN sudo ln -f /usr/bin/opam-2.1 /usr/bin/opam && opam update
 RUN sudo apt-get update && sudo apt-get install libev-dev capnproto libcapnp-dev graphviz m4 pkg-config libsqlite3-dev libgmp-dev libffi-dev -y --no-install-recommends
-RUN cd ~/opam-repository && git fetch origin master && git reset --hard d4eff0dc069a950dbebebcf7f800fc08d924682b && opam update
+RUN cd ~/opam-repository && git fetch origin master && git reset --hard 52c592130dea263adad327be35a1145b22ca79df && opam update
 COPY --chown=opam \
     vendor/ocurrent/current_docker.opam \
     vendor/ocurrent/current_github.opam \
@@ -20,11 +20,10 @@ COPY --chown=opam \
     vendor/ocaml-matrix/matrix-common.opam \
     vendor/ocaml-matrix/matrix-ctos.opam \
     vendor/ocaml-matrix/matrix-current.opam \
-    /src/ocaml-matrix/
+    /src/vendor/ocaml-matrix/
 COPY --chown=opam \
     vendor/ocaml-ci/ocaml-ci.opam \
     vendor/ocaml-ci/ocaml-ci-api.opam \
-    vendor/ocaml-ci/ocaml-ci-service.opam \
     vendor/ocaml-ci/ocaml-ci-solver.opam \
     /src/vendor/ocaml-ci/
 COPY --chown=opam \
@@ -47,7 +46,6 @@ RUN opam pin add -yn current_docker.dev "./vendor/ocurrent" && \
     opam pin add -yn matrix-current.dev "./vendor/ocaml-matrix" && \
     opam pin add -yn ocaml-ci.dev "./vendor/ocaml-ci" && \
     opam pin add -yn ocaml-ci-api.dev "./vendor/ocaml-ci" && \
-    opam pin add -yn ocaml-ci-service.dev "./vendor/ocaml-ci" && \
     opam pin add -yn ocaml-ci-solver.dev "./vendor/ocaml-ci"
 COPY --chown=opam tezos-ci.opam /src/
 RUN opam install -y --deps-only .

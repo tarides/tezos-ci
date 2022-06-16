@@ -24,6 +24,7 @@
   (ocaml
    (>= 4.10.0))
   dune-build-info
+  github-unix
   (current (>= 0.6))
   current_web
   current_git
@@ -41,9 +42,10 @@
   lwt
   logs
   ocaml-ci
-  ocaml-ci-service
+  ocaml-ci-api
   ocaml-ci-solver
   (cmdliner (>= 1.1.0))
+
   dockerfile
   conf-libev)
  (conflicts (gitlab-unix (= "0.1.1"))))

@@ -8,7 +8,7 @@ module Docker = Current_docker.Default
 
 let platforms =
   let schedule = Current_cache.Schedule.v ~valid_for:(Duration.of_day 30) () in
-  let v { Ocaml_ci_service.Conf.label; builder; pool; distro; ocaml_version; arch; opam_version } =
+  let v { Conf.label; builder; pool; distro; ocaml_version; arch; opam_version } =
     let base = Platform.pull ~arch ~schedule ~builder ~distro ~ocaml_version ~opam_version in
     let host_base =
       match arch with
@@ -17,11 +17,11 @@ let platforms =
     in
     Platform.get ~arch ~label ~builder ~pool ~distro ~ocaml_version ~host_base ~opam_version base
   in
-  let v2_0 = Ocaml_ci_service.Conf.platforms `V2_0 in
-  let v2_1 = Ocaml_ci_service.Conf.platforms `V2_1 in
+  let v2_0 = Conf.platforms `V2_0 in
+  let v2_1 = Conf.platforms `V2_1 in
 
   (* NOTE Build on ARM, x86 and s390x available in Tezos cluster. *)
-  let plaform_list = List.filter (fun x -> match x.Ocaml_ci_service.Conf.arch with
+  let plaform_list = List.filter (fun x -> match x.Conf.arch with
       | `X86_64 | `I386 | `Aarch32 | `Aarch64 | `S390x -> true
       |_ -> false) (v2_0 @ v2_1) in
   Current.list_seq (List.map v plaform_list)
@@ -204,7 +204,7 @@ let v ~ocluster ~app ~solver () =
   let repos = repositories installation |> set_active_repos ~installation in
   repos |> Current.list_iter ~collapse_key:"repo" (module Gitlab.Repo_id) @@ fun repo ->
   let* repo_id = repo in
-  let refs = Gitlab.Api.ci_refs app ~staleness:Ocaml_ci_service.Conf.max_staleness repo_id |> set_active_refs ~repo in
+  let refs = Gitlab.Api.ci_refs app ~staleness:Conf.max_staleness repo_id |> set_active_refs ~repo in
   refs |> Current.list_iter (module Gitlab.Api.Commit) @@ fun head ->
   let src = Git.fetch (Current.map Gitlab.Api.Commit.id head) in
   let analysis = Analyse.examine ~solver ~platforms ~opam_repository_commit src in
