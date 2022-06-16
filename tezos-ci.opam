@@ -16,6 +16,7 @@ depends: [
   "dune" {>= "2.8"}
   "ocaml" {>= "4.10.0"}
   "dune-build-info"
+  "github-unix"
   "current" {>= "0.6"}
   "current_web"
   "current_git"
@@ -25,12 +26,16 @@ depends: [
   "capnp-rpc-unix"
   "obuilder-spec"
   "opam-file-format"
+  "ocaml-ci-solver"
   "ppx_deriving" {>= "5.2.1"}
   "ppx_deriving_yojson" {>= "3.6.1"}
   "astring"
   "fmt"
   "lwt"
   "logs"
+  "ocaml-ci"
+  "ocaml-ci-api"
+  "ocaml-ci-solver"
   "cmdliner" {>= "1.1.0"}
   "dockerfile"
   "conf-libev"

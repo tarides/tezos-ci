@@ -1,3 +1,6 @@
+module Projects = Projects
+module Css = Css
+
 module Website_description = struct
   open Tyxml_html
 

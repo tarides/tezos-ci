@@ -10,6 +10,7 @@ let repo_id =
 let ci_refs_staleness = Duration.of_day 1
 
 let ci_refs gitlab =
+  let open Octez in
   let to_ptime str =
     Ptime.of_rfc3339 str |> function
     | Ok (t, _, _) -> t
@@ -108,23 +109,28 @@ let main () current_config mode gitlab (`Ocluster_cap cap) =
       (fun cap ->
         let vat = Capnp_rpc_unix.client_only_vat () in
         let submission_cap = Capnp_rpc_unix.Vat.import_exn vat cap in
-        let connection =
-          Current_ocluster.Connection.create ~max_pipeline:20 submission_cap
-        in
-        Current_ocluster.v connection)
+        let connection = Current_ocluster.Connection.create ~max_pipeline:20 submission_cap in
+        Current_ocluster.v connection, submission_cap)
       cap
   in
   let index = Website.make () in
+  let solver = Ocaml_ci.Solver_pool.spawn_local () in
   let engine =
     Current.Engine.create ~config:current_config (fun () ->
-        pipeline ~index ocluster gitlab)
+        Current.all [
+            pipeline ~index (Option.map fst ocluster) gitlab
+          ; Ocaml_ci_gitlab.Pipeline.v ~ocluster:(Option.map snd ocluster) ~app:gitlab ~solver ()
+          ]
+      )
   in
+
   let site =
     let routes =
-      Routes.(
-        (s "webhooks" / s "gitlab" /? nil)
-        @--> Gitlab.webhook ~webhook_secret:(Gitlab.Api.webhook_secret gitlab))
+      (* Replace ocurrent version of style.css with our version. *)
+      Routes.((s "css" / s "style.css" /? nil) @--> Website.Css.(static gitlab_css)) ::
+      Routes.((s "webhooks" / s "gitlab" /? nil) @--> Gitlab.webhook ~webhook_secret:(Gitlab.Api.webhook_secret gitlab))
       :: Website.routes index engine
+      @ Website.Projects.routes
       @ Current_web.routes engine
     in
     Current_web.Site.(v ~has_role:allow_all) ~name:program_name routes

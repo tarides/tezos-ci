@@ -6,4 +6,5 @@
   tezos-ci.analysis
   tezos-ci.lib
   tezos-ci.stages
-  tezos-ci.octez))
+  tezos-ci.octez
+  tezos-ci.ocaml-ci-gitlab))

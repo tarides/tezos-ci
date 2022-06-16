@@ -1,0 +1,15 @@
+(library
+ (public_name tezos-ci.ocaml-ci-gitlab)
+ (name ocaml_ci_gitlab)
+ (libraries
+   ocaml-ci
+   ocaml-version
+   dockerfile-opam
+   current
+   current_git
+   current_github
+   current_gitlab
+   current_docker
+   current_web
+   gitlab-unix)
+ (modules pipeline conf))

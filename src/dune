@@ -1,28 +1,27 @@
 (executable
- (public_name tezos-ci)
- (package tezos-ci)
- (name tezos_ci)
- (modules tezos_ci)
+ (name main)
+ (modules main)
  (libraries
-  dune-build-info
-  current
-  current.fs
-  current.cache
-  current_git
-  current_web
-  current_gitlab
-  capnp-rpc-unix
-  astring
-  dockerfile
-  cmdliner
-  lwt
-  lwt.unix
-  obuilder-spec
-  opam-file-format
-  tezos-ci.analysis
-  tezos-ci.logging
-  tezos-ci.octez
-  tezos-ci.website))
+   dune-build-info
+   current
+   current.fs
+   current.cache
+   current_git
+   current_web
+   current_gitlab
+   capnp-rpc-unix
+   astring
+   dockerfile
+   cmdliner
+   lwt
+   lwt.unix
+   obuilder-spec
+   opam-file-format
+   tezos-ci.analysis
+   tezos-ci.logging
+   tezos-ci.ocaml-ci-gitlab
+   tezos-ci.octez
+   tezos-ci.website))
 
 (executable
  (public_name tezos-ci-local)
@@ -45,5 +44,22 @@
   opam-file-format
   tezos-ci.analysis
   tezos-ci.logging
-  tezos-ci.octez
+  tezos-ci.ocaml-ci-gitlab
+  tezos-ci.octez 
   tezos-ci.website))
+
+; This is a hack to work around https://github.com/ocaml/dune/issues/3499
+; We first build the binaries, then copy them to a new name, then install them.
+; This allows us to add in the run-time dependency on ocaml-ci-solver in the
+; copy step.
+
+(install
+ (section bin)
+ (package tezos-ci)
+ (files (main-copy.exe as tezos-ci)))
+
+(rule
+ (target main-copy.exe)
+ (deps (package ocaml-ci-solver))
+ (action (copy main.exe main-copy.exe)))
+

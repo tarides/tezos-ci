@@ -22,9 +22,11 @@ created, login as that account, visit
 <https://gitlab.com/-/profile/personal_access_tokens> and create a
 Personal Access Token for tezos-ci. Use the following information:
 
-Token name: tezos-ci\
-Expiration date: None (or choose a suitable timeframe for rotating credentials)\
-Select scopes: api, read_repository
+``` yaml
+  Token name: tezos-ci
+  Expiration date: None (or choose a suitable timeframe for rotating credentials)
+  Select scopes: api, read_repository
+```
 
 Record the personal access token generated as it needs to be supplied
 to the application as cli arguments.
@@ -40,9 +42,11 @@ To setup login as the bot user, go to
 <https://gitlab.com/oauth/applications> and fill in the following
 information:
 
-Name: tezos-ci\
-Redirect URI: <https://gitlab.tezos.ci.dev:8100/login>\
-Scopes: read_user (Read the authenticated user's personal information)
+``` yaml
+  Name: tezos-ci
+  Redirect URI: <https://gitlab.tezos.ci.dev:8100/login>
+  Scopes: read_user (Read the authenticated user's personal information)
+```
 
 Record the application id and secret as they need to be supplied to
 the application as cli arguments.
