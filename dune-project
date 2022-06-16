@@ -44,3 +44,13 @@
   dockerfile
   conf-libev)
  (conflicts (gitlab-unix (= "0.1.1"))))
+
+(package
+ (name tezos-setup)
+ (synopsis "CLI tool for setting up Gitlab applications and permissions")
+ (description "CLI tool for setting up Gitlab applications and permissions")
+ (depends
+  (ocaml (>= 4.10.0))
+  (cmdliner (>= 1.1.0))
+  (gitlab-unix (>= 0.1.4))
+  (fmt (>= 0.9.0))))

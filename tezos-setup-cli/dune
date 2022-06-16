@@ -1,0 +1,6 @@
+(executable
+ (libraries gitlab-unix dune-build-info cmdliner otoml fmt)
+ (package tezos-setup)
+ (public_name tezos-setup)
+ (modules main config project_hook)
+ (name main))
