@@ -1,6 +1,6 @@
 [submodule "ocluster"]
 	path = vendor/ocluster
-	url = https://github.com/MisterDA/ocluster.git
+	url = https://github.com/ocurrent/ocluster.git
 	branch = tezos-ci
 [submodule "ocurrent"]
 	path = vendor/ocurrent
@@ -9,4 +9,4 @@
 [submodule "vendor/current-web-pipelines"]
 	path = vendor/current-web-pipelines
 	url = https://github.com/tarides/current-web-pipelines.git
-	branch = main
+	branch = display-active-pipelines
