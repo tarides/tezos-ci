@@ -19,6 +19,10 @@ COPY --chown=opam \
 COPY --chown=opam \
 	vendor/current-web-pipelines/current-web-pipelines.opam \
 	/src/vendor/current-web-pipelines/
+COPY --chown=opam \
+	vendor/ocaml-gitlab/gitlab.opam \
+	vendor/ocaml-gitlab/gitlab-unix.opam \
+	/src/vendor/ocaml-gitlab/
 WORKDIR /src
 RUN opam pin add -yn current_docker.dev "./vendor/ocurrent" && \
     opam pin add -yn current_github.dev "./vendor/ocurrent" && \
@@ -30,7 +34,9 @@ RUN opam pin add -yn current_docker.dev "./vendor/ocurrent" && \
     opam pin add -yn current_web.dev "./vendor/ocurrent" && \
     opam pin add -yn current_ocluster.dev "./vendor/ocluster" && \
     opam pin add -yn ocluster-api.dev "./vendor/ocluster" && \
-    opam pin add -yn current-web-pipelines.dev "./vendor/current-web-pipelines"
+    opam pin add -yn current-web-pipelines.dev "./vendor/current-web-pipelines" && \
+	opam pin add -yn gitlab.dev "./vendor/ocaml-gitlab" && \
+	opam pin add -yn gitlab-unix.dev "./vendor/ocaml-gitlab"
 COPY --chown=opam tezos-ci.opam /src/
 RUN opam install -y --deps-only .
 ADD --chown=opam . .
