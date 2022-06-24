@@ -37,7 +37,6 @@ let v (tezos_repository : Analysis.Tezos_repository.t) =
               "/tezos/sc_rollup_protocol_versions";
               "/tezos/poetry.lock";
               "/tezos/pyproject.toml";
-              "/tezos/Makefile";
               "/tezos/dune";
               "/tezos/dune-project";
             ]
@@ -58,8 +57,10 @@ let v (tezos_repository : Analysis.Tezos_repository.t) =
           run "diff pyproject.toml /home/tezos/pyproject.toml";
           env "DUNE_CACHE" "enabled";
           env "DUNE_CACHE_TRANSPORT" "direct";
+          run ~cache "opam install opam-monorepo.0.3.3";
+          run ~cache "opam monorepo pull";
           (* 2. Actually build and extract _build/default/src/lib_protocol_compiler/main_native.exe from the cached folder *)
-          run ~cache "opam exec -- make all build-sandbox build-unreleased";
+          run ~cache "opam exec -- dune build";
           run ~cache "opam exec -- dune build src/bin_tps_evaluation";
           run
             "mkdir dist && cp --parents tezos-* src/proto_*/parameters/*.json \
