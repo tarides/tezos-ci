@@ -1,6 +1,8 @@
-## Tezos-CI
+## Tezos-CI (unmaintained)
 
 A translation of Tezos' [Gitlab CI](https://gitlab.com/tezos/tezos/-/tree/master/.gitlab/ci) in the ocurrent world.
+
+This project is no longer maintained but serves as a good example for using ocurrent to build a CI system.
 
 ### What is supported
 
